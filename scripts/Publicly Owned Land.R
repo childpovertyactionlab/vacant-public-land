@@ -1,10 +1,10 @@
 library(tidyverse)
 library(sf)
-library(CPALtools)
+library(cpaltemplates)
 library(googlesheets4)
 
-libDB <- "C:/Users/micha/CPAL Dropbox/" #dropbox directory
-libGH <- "C:/Users/micha/Documents/GitHub/" #github directory
+libDB <- "C:/Users/Michael/CPAL Dropbox/" #dropbox directory
+libGH <- "C:/Users/Michael/Documents/GitHub/" #github directory
 
 #libDB <- "E:/CPAL Dropbox/" #dropbox directory
 #libGH <- "C:/Users/Michael Lopez/Documents/GitHub/" #github directory
@@ -13,8 +13,8 @@ libGH <- "C:/Users/micha/Documents/GitHub/" #github directory
 dallas <- st_read(paste0(libDB, "Data Library/Data.gdb"), layer = "Dallas_Simple")
 #st_crs(dallas)
 
-accounts <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/account_info.csv"))
-parcels <- st_read(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/PARCEL2021/PARCEL2021.shp")) %>%
+accounts <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/account_info.csv"))
+parcels <- st_read(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/PARCEL2023/PARCEL2023.shp")) %>%
   st_transform(crs = 6584)
 
 # separate column of just owner names and count how many accounts are owned by each owner
@@ -48,22 +48,4 @@ pubParcels <- parcels %>%
 
 plot(pubParcels["geometry"])
 
-#st_write(pubParcels, "Data/Publicly Owned Parcels.gpkg", layer = "DCAD Publicly Owned Parcels")
-
-##### Base Zoning
-st_layers("C:/Users/micha/CPAL Dropbox/Data Library/City of Dallas/02_Boundaries and Features/Zoning/Data/CityofDallas_Zoning.gpkg")
-zoning <- st_read("C:/Users/micha/CPAL Dropbox/Data Library/City of Dallas/02_Boundaries and Features/Zoning/Data/CityofDallas_Zoning.gpkg", layer = "Base_Zoning")
-st_crs(zoning)
-sum(zoning$sqmi)
-test <- zoning %>%
-  filter(zone_dist == "PD")
-
-sum(test$sqmi)
-sum(test$sqmi)/sum(zoning$sqmi)
-
-# blah
-cleanOwners <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1_mMM9Smz4LndqW-fFx0O5VuIAyvIG3oLxvUdtMbv9Ys/", sheet = "pubDallas")
-
-countOWners <- cleanOwners %>%
-  group_by(OWNERSHIP_GROUP) %>%
-  summarize(TOT_ACCOUNTS = sum(TOT_ACCOUNTS))
+st_write(pubParcels, "DCAD Publicly Owned Parcels.geojson", delete_dsn = TRUE)

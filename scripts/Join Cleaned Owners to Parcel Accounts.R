@@ -1,33 +1,30 @@
 library(tidyverse)
 library(sf)
-library(CPALtools)
+library(cpaltemplates)
 library(googlesheets4)
 
-#libDB <- "C:/Users/micha/CPAL Dropbox/" #dropbox directory
-#libGH <- "C:/Users/micha/Documents/GitHub/" #github directory
-
-libDB <- "E:/CPAL Dropbox/" #dropbox directory
-libGH <- "C:/Users/Michael Lopez/Documents/GitHub/" #github directory
+libDB <- "C:/Users/Michael/CPAL Dropbox/" #dropbox directory
+libGH <- "C:/Users/Michael/Documents/GitHub/" #github directory
 
 cleanOwners <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1_mMM9Smz4LndqW-fFx0O5VuIAyvIG3oLxvUdtMbv9Ys/", sheet = "pubDallas")
 
-countOWners <- cleanOwners %>%
-  group_by(OWNERSHIP_GROUP) %>%
-  summarize(TOT_ACCOUNTS = sum(TOT_ACCOUNTS))
+#countOWners <- cleanOwners %>%
+#  group_by(OWNERSHIP_GROUP) %>%
+#  summarize(TOT_ACCOUNTS = sum(TOT_ACCOUNTS))
 
 dallas <- st_read(paste0(libDB, "Data Library/Data.gdb"), layer = "Dallas_Simple") %>%
   st_transform(crs = 2276)
 #st_crs(dallas)
 
 # import parcel and owner data 
-accounts <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/account_info.csv"))
-parcels <- st_read(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/PARCEL2021/PARCEL2021.shp")) %>%
+accounts <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/account_info.csv"))
+parcels <- st_read(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/PARCEL2023/PARCEL2023.shp")) %>%
   st_transform(crs = 2276) %>%
   .[dallas, ]
 
-accountAppr <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/account_apprl_year.csv"))
-resDet <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/res_detail.csv"))
-comDet <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2021 Certified/com_detail.csv"))
+accountAppr <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/account_apprl_year.csv"))
+resDet <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/res_detail.csv"))
+comDet <- rio::import(paste0(libDB, "Data Library/Parcel Data/DCAD/2023 Certified/com_detail.csv"))
 
 # vacant accounts only 
 vacant <- accountAppr %>%
@@ -90,4 +87,4 @@ invtParcels <- st_difference(publicDallas, maskDallas)
 
 plot(invtParcels["OWNERSHIP_GROUP"])
 
-st_write(invtParcels, "data/Public Land in the City of Dallas.geojson")
+st_write(invtParcels, "data/Public Land in the City of Dallas.geojson", delete_dsn = TRUE)
