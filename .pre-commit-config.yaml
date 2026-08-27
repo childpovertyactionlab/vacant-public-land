@@ -1,0 +1,24 @@
+# Pre-commit hygiene for vacant-public-land.
+# Purpose: stop secrets and large regenerable spatial data from ever landing in git.
+# Raw spatial formats (*.geojson/*.gpkg/*.parquet/*.shp) are blocked by .gitignore;
+# these hooks are the backstop. docs/ is the built, published site (HTML + PMTiles +
+# vendored libs) so it is exempt from the size and whitespace churn checks.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+        exclude: ^docs/
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+        exclude: ^(docs/|www/images/)
+      - id: trailing-whitespace
+        exclude: ^(docs/|www/images/)
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
