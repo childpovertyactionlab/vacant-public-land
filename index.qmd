@@ -2,44 +2,83 @@
 title: "Vacant Parcels Owned by Public Entities"
 ---
 
+```{r}
+#| label: setup
+#| include: false
+
+library(sf)
+library(dplyr)
+library(mapgl)
+library(glue)
+library(scales)
+library(jsonlite)
+library(htmltools)
+library(htmlwidgets)
+
+# --- Mapbox basemap + token --------------------------------------------------
+# Basemap is the CPAL Mapbox style the original 2023 map used. A client-side GL
+# map must embed a token in the rendered page, so this MUST be a PUBLIC (pk.*)
+# token — reuse the same publishable token the live page already exposes (owned
+# by the michaelcpal account that owns this style, URL-restricted; never a secret
+# sk.* token). Kept in .env (gitignored) as MAPBOX_TOKEN; bridged to the name
+# mapgl expects.
+Sys.setenv(MAPBOX_PUBLIC_TOKEN = Sys.getenv("MAPBOX_TOKEN"))
+if (!nzchar(Sys.getenv("MAPBOX_PUBLIC_TOKEN"))) {
+  stop("Set MAPBOX_TOKEN in .env to the published Mapbox public (pk.*) token.")
+}
+cpal_style <- "mapbox://styles/michaelcpal/clqzkwbw800sw01nv90032l7z"
+
+# --- Vintages (data-driven) --------------------------------------------------
+# To add 2026: append one row and drop its PMTiles into docs/. No other change.
+# `pmtiles` are served from docs/ by GitHub Pages (range requests). `geojson`
+# is read at render time only, to compute the header counts.
+vintages <- tibble::tribble(
+  ~year,  ~label,  ~geojson,                                ~pmtiles,                          ~is_default,
+  2023L,  "2023",  "data/public-vacant-land_2023.geojson",  "public-vacant-land_2023.pmtiles",  FALSE,
+  2025L,  "2025",  "data/public-vacant-land_2025.geojson",  "public-vacant-land_2025.pmtiles",  TRUE
+)
+default_year <- vintages$year[vintages$is_default][1]
+
+# --- Ownership groups + palette (from the original map fills) -----------------
+group_palette <- c(
+  "CITY OF DALLAS"            = "#008097",
+  "DALLAS COUNTY"            = "#E98816",
+  "DART"                     = "#1E4A4A",
+  "DALLAS COLLEGE"           = "#F7314C",
+  "DALLAS ISD"               = "#EA8B98",
+  "DALLAS HOUSING AUTHORITY" = "#851E2C",
+  "MULTIPLE OWNERS"          = "#EACA2D"
+)
+groups <- names(group_palette)
+slug   <- function(x) tolower(gsub("[^A-Za-z0-9]+", "-", x))
+
+# --- Per-vintage, per-group counts for the header cards ----------------------
+# Reads the (gitignored, locally-present) geojson build outputs. Emitted to the
+# page as JSON so the picker can update the cards client-side.
+vintage_stats <- lapply(seq_len(nrow(vintages)), function(i) {
+  v <- vintages[i, ]
+  if (!file.exists(v$geojson)) {
+    warning(glue("Missing {v$geojson}; run the join script for {v$year}."))
+    return(list(year = v$year, total = 0, by_group = as.list(setNames(rep(0, length(groups)), groups))))
+  }
+  d <- sf::st_read(v$geojson, quiet = TRUE) |> sf::st_drop_geometry()
+  by_group <- sapply(groups, function(g) sum(d$OWNERSHIP_GROUP == g, na.rm = TRUE))
+  list(year = v$year, total = nrow(d), by_group = as.list(by_group))
+})
+names(vintage_stats) <- as.character(vintages$year)
+stats_json <- jsonlite::toJSON(vintage_stats, auto_unbox = TRUE)
+
+fmt <- function(n) scales::comma(n)
+def <- vintage_stats[[as.character(default_year)]]
+```
 
 ```{r}
-#| include: FALSE
-library(sf)
-library(tidyverse)
-library(leaflet)
-library(cpaltemplates)
-library(units)
-
-cityVacant <- st_read("data/Public Land in the City of Dallas.geojson")
-
-citySm <- cityVacant %>%
-  select(GIS_PARCEL_ID, ACCOUNT_NUM, STREET_NUM, FULL_STREET_NAME, PROPERTY_CITY, PROPERTY_ZIPCODE, OWNERSHIP_GROUP, LAND_VAL, PREV_MKT_VAL, SPTD_CODE) %>%
-  mutate(ZIP = str_extract(PROPERTY_ZIPCODE, "^\\d{5}")) %>%
-  st_transform(crs = 4326)
-
-ownerGroups <-  citySm[st_is_valid(citySm), ] %>%
-  mutate(AreaSqMi = set_units(set_units(st_area(.), "m^2"), "mi^2")) %>%
-  st_drop_geometry() %>%
-  group_by(OWNERSHIP_GROUP) %>%
-  summarize(tot_accounts = n(),
-            AreaSqMi = as.numeric(round(sum(AreaSqMi), digits = 4)))
-
-count_total <- scales::comma(nrow(st_drop_geometry(citySm)))
-
-count_cod <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "CITY OF DALLAS")))
-count_dcollege <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "DALLAS COLLEGE")))
-count_dcounty <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "DALLAS COUNTY")))
-count_dha <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "DALLAS HOUSING AUTHORITY")))
-count_disd <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "DALLAS ISD")))
-count_dart <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "DART")))
-count_multiple <- scales::comma(nrow(st_drop_geometry(citySm) %>% filter(OWNERSHIP_GROUP == "MULTIPLE OWNERS")))
-
-dallasBound <- st_read("data/City of Dallas Boundary.geojson") %>%
-  st_transform(crs = 4326)
-
-map_palette <- c("#008097", "#ED683F", "#EACA2D", "#5C2B1C", "#ED018C", "#185411")
-
+#| echo: false
+#| results: asis
+# Expose counts + config to the client for the vintage picker.
+cat(as.character(tags$script(HTML(glue(
+  "window._VPL = {{ stats: {stats_json}, defaultYear: {default_year} }};"
+)))))
 ```
 
 ::: column-screen-inset
@@ -53,259 +92,134 @@ map_palette <- c("#008097", "#ED683F", "#EACA2D", "#5C2B1C", "#ED018C", "#185411
 
 ```{=html}
 <div class="cardbox">
-
 <div class="left-card-col dark-col">
-```
-
-```{=html}
   <div class="card-side" style="width: 94%;">
 ```
 
-# There are `r count_total` unique vacant lots owned by public entities within the City of Dallas
+# There are <span id="vpl-total">`r fmt(def$total)`</span> unique vacant lots owned by public entities within the City of Dallas
 
 ```{=html}
     <div class="subtext">
-      &#8212; Dallas Central Appraisal District (2023)
+      &#8212; Dallas Central Appraisal District (<span id="vpl-vintage-label">`r default_year`</span>)
     </div>
   </div>
 </div>
 ```
 
+```{r}
+#| echo: false
+#| results: asis
+# Right-hand count rows, one per ownership group. IDs let the picker update them.
+rows <- vapply(groups, function(g) {
+  as.character(tags$h4(
+    tags$div(class = "rounded-outline",
+             tags$b(id = glue("vpl-count-{slug(g)}"), fmt(def$by_group[[g]]))),
+    HTML(glue(" listed as <span style='color: {group_palette[[g]]};'>{tools::toTitleCase(tolower(g))}</span>"))
+  ))
+}, character(1))
+cat('<div class="right-card-col"><div style="width: 3%"></div><div class="card-side">')
+cat(paste(rows, collapse = "\n"))
+cat('</div></div>')
+```
+
 ```{=html}
-<div class="right-card-col">
-
-  <div style="width: 3%">
-  </div>
-
-  <div class="card-side">
-    
-    <h4>
-      <div class="rounded-outline"><b>`r count_cod`</b></div> listed as <span style="color: #008097;">City of Dallas</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_dcounty`</b></div> listed as <span style="color: #ED683F;">Dallas County</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_dart`</b></div> listed as <span style="color: #bd9e0b;">DART</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_dcollege`</b></div> listed as <span style="color: #5C2B1C;">Dallas College</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_disd`</b></div> listed as <span style="color: #ED018C;">Dallas Independent School District</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_dha`</b></div> listed as <span style="color: #ED018C;">Dallas Housing Authority</span>
-    </h4>
-    <h4>
-      <div class="rounded-outline"><b>`r count_multiple`</b></div> listed as owned by a <span style="color: #185411;">Multiple Owners</span>
-    </h4>
-
-  </div>
 </div>
-
-</div>
-
 ```
 
 ::::
 
 :::
 
-The map below visualizes the vacant land within the boundaries of the City of Dallas currently owned by public agencies such as the City of Dallas, Dallas County, DART, and Dallas ISD, among others using 2023 DCAD Certified rolls.
+The map below shows vacant land within the City of Dallas owned by public agencies
+(City of Dallas, Dallas County, DART, Dallas ISD, and others), from DCAD certified
+rolls. Use the vintage control to switch appraisal years; toggle agencies in the
+layer control.
+
+```{=html}
+<div id="vpl-vintage-picker" class="vpl-picker" aria-label="Appraisal vintage"></div>
+```
 
 ```{r}
-#| fig-height: 8
-popup <- paste0("<b>", "Account Number: ", "</b>", citySm$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", citySm$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", citySm$STREET_NUM, " ", citySm$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", citySm$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", citySm$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(citySm$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(citySm$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", citySm$SPTD_CODE, "<br>"
-               )
+#| label: map
+#| echo: false
 
-cityDallas <- citySm %>%
-  filter(OWNERSHIP_GROUP == "CITY OF DALLAS")
+pmtiles_url <- function(f) f  # served from docs/ alongside index.html (relative URL)
 
-countyDallas <- citySm %>%
-  filter(OWNERSHIP_GROUP == "DALLAS COUNTY")
+m <- mapboxgl(style = cpal_style, center = c(-96.7970, 32.7767), zoom = 10)
 
-isdDallas <- citySm %>%
-  filter(OWNERSHIP_GROUP == "DALLAS ISD")
+# City boundary outline (tracked geojson; drawn as a reference frame).
+boundary <- sf::st_read("data/City of Dallas Boundary.geojson", quiet = TRUE) |>
+  sf::st_transform(4326)
+m <- m |> add_line_layer(id = "city-boundary", source = boundary,
+                         line_color = "#595959", line_width = 2, line_opacity = 1)
 
-multiple <- citySm %>%
-  filter(OWNERSHIP_GROUP == "MULTIPLE OWNERS")
+# For each vintage x group, add a fill layer. Layers are id'd "<year>__<group>"
+# so the picker can flip a whole vintage by prefix. All added visible; onRender
+# hides the non-default vintages. CONFIRM add_pmtiles_source / source_layer name
+# ("parcels") against how build/tile step names the tippecanoe layer.
+for (i in seq_len(nrow(vintages))) {
+  v <- vintages[i, ]
+  src_id <- glue("src-{v$year}")
+  m <- m |> add_pmtiles_source(id = src_id, url = pmtiles_url(v$pmtiles))
+  for (g in groups) {
+    m <- m |> add_fill_layer(
+      id           = glue("{v$year}__{slug(g)}"),
+      source       = src_id,
+      source_layer = "parcels",
+      fill_color   = unname(group_palette[[g]]),
+      fill_opacity = 0.45,
+      fill_outline_color = "#595959",
+      filter       = list("==", list("get", "OWNERSHIP_GROUP"), g),
+      tooltip      = "popup_html"   # CONFIRM: precompute a popup_html property when tiling
+    )
+  }
+}
 
-haDallas <- citySm %>%
-  filter(OWNERSHIP_GROUP == "DALLAS HOUSING AUTHORITY")
+# Wire the vintage picker + card updates once the map is on the page.
+# NOTE: this JS glue is the one piece that needs a render pass to confirm against
+# the mapgl widget instance (see the front-end decision).
+# glue delimiters set to << >> so the JS braces pass through untouched.
+m |> htmlwidgets::onRender(glue(r"(
+function(el, x) {
+  var map = this.map;
+  var cfg = window._VPL;
+  var years = Object.keys(cfg.stats);
+  var groupSlugs = <<group_slugs>>;
 
-dart <- citySm %>%
-  filter(OWNERSHIP_GROUP == "DART")
+  function setVintage(year) {
+    years.forEach(function(y) {
+      var vis = (String(y) === String(year)) ? 'visible' : 'none';
+      groupSlugs.forEach(function(gs) {
+        var id = y + '__' + gs.slug;
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+      });
+    });
+    var s = cfg.stats[String(year)];
+    document.getElementById('vpl-total').textContent = s.total.toLocaleString();
+    document.getElementById('vpl-vintage-label').textContent = year;
+    groupSlugs.forEach(function(gs) {
+      var c = document.getElementById('vpl-count-' + gs.slug);
+      if (c) c.textContent = (s.by_group[gs.name] || 0).toLocaleString();
+    });
+  }
 
-collegeDallas <- citySm %>%
-  filter(OWNERSHIP_GROUP == "DALLAS COLLEGE")
+  var picker = document.getElementById('vpl-vintage-picker');
+  years.forEach(function(y) {
+    var id = 'vpl-radio-' + y;
+    var wrap = document.createElement('label');
+    wrap.className = 'vpl-radio';
+    var input = document.createElement('input');
+    input.type = 'radio'; input.name = 'vpl-vintage'; input.value = y; input.id = id;
+    if (String(y) === String(cfg.defaultYear)) input.checked = true;
+    input.addEventListener('change', function() { setVintage(y); });
+    wrap.appendChild(input);
+    wrap.appendChild(document.createTextNode(' ' + y));
+    picker.appendChild(wrap);
+  });
 
-leaflet() %>%
-#  setView(lng = -96.7970, lat = 32.7767, zoom = 10) %>%
-  addTiles(urlTemplate = cpal_mapbox_color, attribution = cpal_leaflet) %>%
-  addPolygons(data = dallasBound,
-              fillColor = "#595959",
-              color = "#595959",
-              weight = 2,
-              opacity = 1,
-              fillOpacity = 0
-              ) %>%
-  addPolygons(data = cityDallas,
-              fillColor = "#008097",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "City of Dallas",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", cityDallas$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", cityDallas$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", cityDallas$STREET_NUM, " ", cityDallas$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", cityDallas$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", cityDallas$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(cityDallas$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(cityDallas$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", cityDallas$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-  addPolygons(data = countyDallas,
-              fillColor = "#E98816",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "Dallas County",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", countyDallas$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", countyDallas$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", countyDallas$STREET_NUM, " ", countyDallas$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", countyDallas$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", countyDallas$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(countyDallas$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(countyDallas$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", countyDallas$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-  addPolygons(data = isdDallas,
-              fillColor = "#EA8B98",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "Dallas ISD",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", isdDallas$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", isdDallas$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", isdDallas$STREET_NUM, " ", isdDallas$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", isdDallas$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", isdDallas$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(isdDallas$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(isdDallas$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", isdDallas$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-  addPolygons(data = multiple,
-              fillColor = "#EACA2D",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "Multiple Owners",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", multiple$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", multiple$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", multiple$STREET_NUM, " ", multiple$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", multiple$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", multiple$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(multiple$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(multiple$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", multiple$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-  addPolygons(data = haDallas,
-              fillColor = "#851E2C",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "Dallas Housing Authority",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", haDallas$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", haDallas$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", haDallas$STREET_NUM, " ", haDallas$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", haDallas$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", haDallas$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(haDallas$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(haDallas$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", haDallas$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-    addPolygons(data = dart,
-              fillColor = "#1E4A4A",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "DART",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", dart$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", dart$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", dart$STREET_NUM, " ", dart$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", dart$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", dart$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(dart$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(dart$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", dart$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-    addPolygons(data = collegeDallas,
-              fillColor = "#F7314C",
-              color = "#595959",
-              weight = 0.5,
-              opacity = 0.8,
-              fillOpacity = 0.4,
-              group = "Dallas College",
-              popup = ~paste0("<b>", "Account Number: ", "</b>", collegeDallas$ACCOUNT_NUM, "<br>",
-                "<b>", "Account Owner: ", "</b>", collegeDallas$OWNERSHIP_GROUP, "<br>",
-                "<b>", "Address: ", "</b>", collegeDallas$STREET_NUM, " ", collegeDallas$FULL_STREET_NAME, "<br>",
-                "<b>", "City: ", "</b>", collegeDallas$PROPERTY_CITY, "<br>",
-                "<b>", "Zip: ", "</b>", collegeDallas$ZIP, "<br>",
-                "<b>", "Current Land Value: ", "</b>", scales::dollar(collegeDallas$LAND_VAL), "<br>",
-                "<b>", "Previous Market Value: ", "</b>", scales::dollar(collegeDallas$PREV_MKT_VAL), "<br>",
-                "<b>", "SPTD Code: ", "</b>", collegeDallas$SPTD_CODE, "<br>"
-               ),
-              highlightOptions = highlightOptions(color = "white", 
-                                                  weight = 2,
-                                                  bringToFront = TRUE)
-              ) %>%
-  addLayersControl(
-    overlayGroups = c("City of Dallas",
-                      "Dallas County",
-                      "Dallas ISD",
-                      "DART",
-                      "Dallas Housing Authority",
-                       
-                      "Dallas College",
-                      "Multiple Owners"),
-    position = "topright",
-    options = layersControlOptions(collapsed = FALSE))
+  map.on('load', function() { setVintage(cfg.defaultYear); });
+}
+)", group_slugs = jsonlite::toJSON(
+       lapply(groups, function(g) list(name = g, slug = slug(g))), auto_unbox = TRUE),
+   .open = "<<", .close = ">>"))
 ```

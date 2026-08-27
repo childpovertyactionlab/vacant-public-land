@@ -1,0 +1,19 @@
+# Gitleaks config for vacant-public-land.
+#
+# A client-side Mapbox GL basemap requires a token embedded in the rendered,
+# published docs/index.html — static hosting cannot hide it. The correct control
+# is to use a Mapbox PUBLIC (publishable) token, "pk.*", restricted by URL in the
+# Mapbox account, and treat it as non-secret. Allow pk tokens so the publish
+# commit is not blocked; keep catching SECRET tokens ("sk.*") and everything else.
+#
+# NEVER put an sk.* Mapbox secret token in this repo — it stays caught below.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Mapbox publishable (public) pk tokens — intentionally client-side, URL-restricted"
+regexTarget = "match"
+regexes = [
+  '''pk\.ey[A-Za-z0-9._-]{20,}''',
+]

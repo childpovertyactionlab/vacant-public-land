@@ -228,53 +228,53 @@ h1 {
     text-align: center;
     border-bottom: 4px solid $gray-100;
     padding-bottom: .5rem;
-    
+
     &::before {
       content: none !important;
     }
-    
+
   }
-  
+
   &.teal {
-    
+
     color: $teal;
-    
+
     &::before {
       content: url('www/images/head/Headline 1_Teal.svg');
     }
   }
-  
+
   &.magenta {
-    
+
     color: $magenta;
-    
+
     &::before {
       content: url('www/images/head/Headline 1_Magenta.svg');
     }
   }
-  
+
   &.mustard {
-    
+
     color: $mustard;
-    
+
     &::before {
       content: url('www/images/head/Headline 1_Mustard.svg');
     }
   }
-  
+
   &.rust {
-    
+
     color: $rust;
-    
+
     &::before {
       content: url('www/images/head/Headline 1_Rust.svg');
     }
   }
-  
+
 }
 
 h2 {
-  
+
   //font-size: calc(1.29rem + 0.48vw);
   border: none !important;
   padding-bottom: 0 !important;
@@ -289,15 +289,15 @@ h2 {
     margin-right: 9px;
     margin-left: calc(0.8rem + 0.6vw);
   }
-  
+
   &#toc-title {
-    
+
     font-size: calc(1rem + 0.4vw);
 
     &::before {
       content: none !important;
     }
-    
+
     /*
     &::after {
       content: url('www/images/head/Headline 4_Dark Teal.svg');
@@ -305,46 +305,46 @@ h2 {
       height: auto;
       vertical-align: middle;
       width: calc(1.5rem + 0.6vw);
-    }    
+    }
     */
   }
-  
+
   &.teal {
-    
+
     color: $teal;
-    
+
     &::before {
       content: url('www/images/head/Headline 2_Teal.svg');
     }
   }
-  
+
   &.magenta {
-    
+
     color: $magenta;
-    
+
     &::before {
       content: url('www/images/head/Headline 2_Magenta.svg');
     }
   }
-  
+
   &.mustard {
-    
+
     color: $mustard;
-    
+
     &::before {
       content: url('www/images/head/Headline 2_Mustard.svg');
     }
   }
-  
+
   &.rust {
-    
+
     color: $rust;
-    
+
     &::before {
       content: url('www/images/head/Headline 2_Rust.svg');
     }
   }
-  
+
 }
 
 
@@ -368,48 +368,48 @@ h3 {
     border-bottom-style: solid;
     padding-bottom: .5rem;
   }
-  
+
   &.teal {
-    
+
     color: $teal;
-    
+
     &::before {
       content: url('www/images/head/Headline 3_Teal.svg');
     }
   }
-  
+
   &.magenta {
-    
+
     color: $magenta;
-    
+
     &::before {
       content: url('www/images/head/Headline 3_Magenta.svg');
     }
   }
-  
+
   &.mustard {
-    
+
     color: $mustard;
-    
+
     &::before {
       content: url('www/images/head/Headline 3_Mustard.svg');
     }
   }
-  
+
   &.rust {
-    
+
     color: $rust;
-    
+
     &::before {
       content: url('www/images/head/Headline 3_Rust.svg');
     }
   }
-  
+
 }
 
 
 h4 {
-  
+
   margin-bottom: 0.5rem !important;
 
   &::before {
@@ -421,48 +421,48 @@ h4 {
     margin-right: 9px;
     margin-left: calc(0.8rem + 0.6vw);
   }
-  
+
   &.teal {
-    
+
     color: $teal;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Teal.svg');
     }
   }
-  
+
   &.magenta {
-    
+
     color: $magenta;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Magenta.svg');
     }
   }
-  
+
   &.mustard {
-    
+
     color: $mustard;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Mustard.svg');
     }
   }
-  
+
   &.rust {
-    
+
     color: $rust;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Rust.svg');
     }
   }
-  
+
 }
 
 
 h4 {
-  
+
   margin-bottom: 0.5rem !important;
 
   &::before {
@@ -474,43 +474,43 @@ h4 {
     margin-right: 9px;
     margin-left: calc(0.8rem + 0.6vw);
   }
-  
+
   &.teal {
-    
+
     color: $teal;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Teal.svg');
     }
   }
-  
+
   &.magenta {
-    
+
     color: $magenta;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Magenta.svg');
     }
   }
-  
+
   &.mustard {
-    
+
     color: $mustard;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Mustard.svg');
     }
   }
-  
+
   &.rust {
-    
+
     color: $rust;
-    
+
     &::before {
       content: url('www/images/head/Headline 4_Rust.svg');
     }
   }
-  
+
 }
 
 
@@ -573,7 +573,7 @@ h4 {
   color: $gray-000 !important;
   font-family: $font-family-sans-serif !important;
   font-weight: 500 !important;
-  
+
   & a {
     color: $gray-200 !important;
   }
@@ -598,7 +598,7 @@ h4 {
   font-weight: bold;
 }
 
-.dark-col { 
+.dark-col {
   background-color: $teal-900;
 }
 
@@ -631,12 +631,12 @@ h4 {
   .cardbox {
     flex-direction: column;
   }
-  
+
   .left-card-col {
     width: 100%;
     display: flex;
   }
-  
+
   .right-card-col {
     width: 100%;
   }
@@ -656,3 +656,25 @@ $mermaid-label-bg-color: $body-bg;
 $mermaid-label-fg-color: $primary;
 $mermaid-node-bg-color: rgba($primary, 0.1);
 $mermaid-node-fg-color: $primary;
+
+
+// Vintage picker (client-side year toggle for the map)
+.vpl-picker {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.5rem 0 1rem 0;
+  font-weight: 600;
+  color: $teal-900;
+}
+.vpl-picker .vpl-radio {
+  cursor: pointer;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid $teal-700;
+  border-radius: 999px;
+  user-select: none;
+}
+.vpl-picker .vpl-radio input {
+  margin-right: 0.35rem;
+  accent-color: $teal-700;
+}
