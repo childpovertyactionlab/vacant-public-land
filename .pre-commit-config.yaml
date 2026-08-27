@@ -14,9 +14,9 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: ^(docs/|www/images/)
+        exclude: ^(docs/|www/images/|renv/)
       - id: trailing-whitespace
-        exclude: ^(docs/|www/images/)
+        exclude: ^(docs/|www/images/|renv/)
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
