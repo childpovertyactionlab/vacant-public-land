@@ -36,8 +36,13 @@ bronze_catalog <- Sys.getenv("CPAL_DBX_BRONZE_CATALOG", "bronze")
 bronze_schema  <- "bronze_tx_dallas_cad"
 parcel_table   <- "parcel_geom_certified"          # cols: Acct, geometry_wkt, tax_year; CRS 2276
 
+# Owner crosswalk. The live Google Sheet is owned by the reviewer and is not
+# accessible to this pipeline, so prefer a committed CSV snapshot (reproducible,
+# no Google auth). The reviewer re-curates the crosswalk per vintage and drops it
+# here as CSV; the sheet read is only a fallback for someone who has access.
+crosswalk_csv   <- "data/owner_crosswalk_pubDallas.csv"
 crosswalk_sheet <- "1_mMM9Smz4LndqW-fFx0O5VuIAyvIG3oLxvUdtMbv9Ys"
-crosswalk_tab   <- "pubDallas"                      # cols: ACCOUNT_NUM, OWNERSHIP_GROUP (re-curate per vintage; see Phase C)
+crosswalk_tab   <- "pubDallas"                      # cols: ACCOUNT_NUM, OWNERSHIP_GROUP
 
 boundary_path <- "data/City of Dallas Boundary.geojson"  # replaces Data.gdb "Dallas_Simple"
 mask_path     <- "data/mask_water_parks.gpkg"            # built by scripts/build_mask.R (Phase B)
@@ -98,9 +103,16 @@ vacant <- DBI::dbGetQuery(con, accounts_sql) |>
                  where = glue("{silver_schema}.account join"))
 
 # ---- 2. Owner crosswalk -> ownership group ----------------------------------
-# Hand-curated public-owner labels. Joined on ACCOUNT_NUM (DCAD account numbers
-# persist across vintages); Phase C re-curates for owners new/changed since 2023.
-cleanOwners <- read_sheet(ss = crosswalk_sheet, sheet = crosswalk_tab) |>
+# Hand-curated public-owner labels, joined on ACCOUNT_NUM (DCAD account numbers
+# persist across vintages). Prefer the committed CSV; fall back to the live sheet.
+cleanOwners <- if (file.exists(crosswalk_csv)) {
+  message("Reading owner crosswalk from ", crosswalk_csv)
+  readr::read_csv(crosswalk_csv, show_col_types = FALSE)
+} else {
+  message("No ", crosswalk_csv, " found; reading the live Google Sheet (needs access). ",
+          "Ask the reviewer for a re-curated CSV to make the build reproducible.")
+  read_sheet(ss = crosswalk_sheet, sheet = crosswalk_tab)
+} |>
   assert_columns(c("ACCOUNT_NUM", "OWNERSHIP_GROUP"), where = "owner crosswalk")
 
 publicAccounts <- vacant |>
