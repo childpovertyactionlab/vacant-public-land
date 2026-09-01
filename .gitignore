@@ -10,6 +10,7 @@
 # --- Secrets & credentials (never commit) ---
 .env
 .env.*
+!.env.example
 .Renviron
 credentials*
 client_secret*
