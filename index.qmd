@@ -37,7 +37,15 @@ vintages <- tibble::tribble(
   2023L,  "2023",  "data/public-vacant-land_2023.geojson",  "public-vacant-land_2023.pmtiles",  FALSE,
   2025L,  "2025",  "data/public-vacant-land_2025.geojson",  "public-vacant-land_2025.pmtiles",  TRUE
 )
-default_year <- vintages$year[vintages$is_default][1]
+# Only include vintages whose data has actually been built, so a partial build
+# (e.g. 2023 only, before the warehouse-sourced 2025 lands) previews cleanly.
+available <- file.exists(vintages$geojson)
+if (!any(available)) {
+  stop("No vintage GeoJSON found. Build one first: scripts/prep_2023.R for 2023, ",
+       "or the join script for a warehouse vintage.")
+}
+vintages <- vintages[available, ]
+default_year <- if (any(vintages$is_default)) vintages$year[vintages$is_default][1] else vintages$year[1]
 
 # --- Ownership groups + palette (from the original map fills) -----------------
 group_palette <- c(
