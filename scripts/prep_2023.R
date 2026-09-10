@@ -26,6 +26,9 @@ d <- st_read(src, quiet = TRUE) |>
     "<b>Previous Market Value: </b>", scales::dollar(PREV_MKT_VAL), "<br>",
     "<b>SPTD Code: </b>", SPTD_CODE
   )) |>
+  # Keep only what the front end uses: OWNERSHIP_GROUP drives layers + counts,
+  # popup_html carries the rest. Drops ~80 unused DCAD columns from the tiles.
+  select(OWNERSHIP_GROUP, popup_html) |>
   st_transform(4326)
 
 st_write(d, out, delete_dsn = TRUE)
