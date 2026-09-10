@@ -34,3 +34,5 @@ gargle-oauth*
 
 # Keep the small city boundary and any served vector tiles
 !data/City of Dallas Boundary.geojson
+
+**/*.quarto_ipynb

@@ -22,9 +22,14 @@ library(htmlwidgets)
 # by the michaelcpal account that owns this style, URL-restricted; never a secret
 # sk.* token). Kept in .env (gitignored) as MAPBOX_TOKEN; bridged to the name
 # mapgl expects.
-Sys.setenv(MAPBOX_PUBLIC_TOKEN = Sys.getenv("MAPBOX_TOKEN"))
-if (!nzchar(Sys.getenv("MAPBOX_PUBLIC_TOKEN"))) {
-  stop("Set MAPBOX_TOKEN in .env to the published Mapbox public (pk.*) token.")
+# quarto spawns its own R process that does NOT read .env, so load it here (a
+# plain KEY=value .env parses like .Renviron). Accept the old MAPBOX_MAP_DEV key
+# too, so either name works.
+if (file.exists(".env")) readRenviron(".env")
+token <- Sys.getenv("MAPBOX_TOKEN", unset = Sys.getenv("MAPBOX_MAP_DEV"))
+Sys.setenv(MAPBOX_PUBLIC_TOKEN = token)
+if (!nzchar(token)) {
+  stop("Set MAPBOX_TOKEN in .env (or .Renviron) to the published Mapbox public (pk.*) token.")
 }
 cpal_style <- "mapbox://styles/michaelcpal/clqzkwbw800sw01nv90032l7z"
 
