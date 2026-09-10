@@ -192,7 +192,7 @@ for (i in seq_len(nrow(vintages))) {
 # NOTE: this JS glue is the one piece that needs a render pass to confirm against
 # the mapgl widget instance (see the front-end decision).
 # glue delimiters set to << >> so the JS braces pass through untouched.
-m |> htmlwidgets::onRender(glue(r"(
+m <- m |> htmlwidgets::onRender(glue(r"(
 function(el, x) {
   var map = this.map;
   var cfg = window._VPL;
@@ -235,4 +235,22 @@ function(el, x) {
 )", group_slugs = jsonlite::toJSON(
        lapply(groups, function(g) list(name = g, slug = slug(g))), auto_unbox = TRUE),
    .open = "<<", .close = ">>"))
+
+# Vendor Mapbox GL JS / draw / geocoder locally. mapgl declares them as remote
+# CDN dependencies (its mapboxgl.yaml), which Quarto cannot serialize into the
+# site ("... is not disk-based"). Attach local copies from www/lib/ with a
+# bumped version so htmltools' dedup-by-newest keeps ours and drops the remote
+# ones. Files vendored from api.mapbox.com at the pinned versions.
+m$dependencies <- c(m$dependencies, list(
+  htmltools::htmlDependency("mapbox-gl-js", "3.24.99",
+    src = list(file = "www/lib/mapbox-gl-js"),
+    script = "mapbox-gl.js", stylesheet = "mapbox-gl.css"),
+  htmltools::htmlDependency("mapbox-gl-draw", "1.5.99",
+    src = list(file = "www/lib/mapbox-gl-draw"),
+    script = "mapbox-gl-draw.js", stylesheet = "mapbox-gl-draw.css"),
+  htmltools::htmlDependency("mapbox-gl-geocoder", "5.0.99",
+    src = list(file = "www/lib/mapbox-gl-geocoder"),
+    script = "mapbox-gl-geocoder.min.js", stylesheet = "mapbox-gl-geocoder.css")
+))
+m
 ```
