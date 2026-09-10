@@ -10,7 +10,12 @@
 # GeoJSON. Does NOT run quarto render.
 set -euo pipefail
 
-command -v tippecanoe >/dev/null 2>&1 || { echo "tippecanoe not found on PATH"; exit 1; }
+# Skip (don't fail the render) if tippecanoe is absent — the map just renders
+# without parcel tiles. Install: apt install tippecanoe / brew install tippecanoe.
+if ! command -v tippecanoe >/dev/null 2>&1; then
+  echo "tippecanoe not found on PATH — skipping tile build (map layers will be empty)."
+  exit 0
+fi
 
 YEARS=("$@")
 if [ ${#YEARS[@]} -eq 0 ]; then

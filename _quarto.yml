@@ -1,6 +1,10 @@
 project:
   type: website
   output-dir: "docs"
+  # Quarto wipes output-dir before rendering, so build the PMTiles AFTER render.
+  # tile.sh tiles each vintage whose GeoJSON exists (skips the rest) into docs/.
+  post-render:
+    - scripts/tile.sh
 format:
   html:
     theme: www/web_report.scss
