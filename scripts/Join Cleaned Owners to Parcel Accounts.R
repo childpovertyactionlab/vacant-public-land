@@ -168,22 +168,23 @@ if (file.exists(mask_path)) {
   invtParcels <- publicDallas
 }
 
-# ---- 5. Popup + write (web CRS 4326 for tiling / MapLibre) -------------------
-# Precompute one popup_html property so the front end (and the PMTiles) carry a
-# ready-to-render popup; mirrors the fields the 2023 map showed.
+# ---- 5. Trim to the map's fields + write (web CRS 4326 for tiling) -----------
+# The browser builds and styles the popup from these fields (no baked HTML).
+# Keep the exact schema prep_2023.R emits so both vintages tile + render alike.
 invtParcels <- invtParcels |>
-  mutate(popup_html = paste0(
-    "<b>Account Number: </b>", ACCOUNT_NUM, "<br>",
-    "<b>Owner: </b>", OWNERSHIP_GROUP, "<br>",
-    "<b>Address: </b>", STREET_NUM, " ", FULL_STREET_NAME, "<br>",
-    "<b>City: </b>", PROPERTY_CITY, "<br>",
-    "<b>Zip: </b>", PROPERTY_ZIPCODE, "<br>",
-    "<b>Land Value: </b>", scales::dollar(LAND_VAL), "<br>",
-    "<b>Previous Market Value: </b>", scales::dollar(PREV_MKT_VAL), "<br>",
-    "<b>SPTD Code: </b>", SPTD_CODE
-  ))
+  transmute(
+    GIS_PARCEL_ID,
+    OWNERSHIP_GROUP,
+    ACCOUNT_NUM,
+    address  = trimws(paste(STREET_NUM, FULL_STREET_NAME)),
+    city     = PROPERTY_CITY,
+    zip      = substr(as.character(PROPERTY_ZIPCODE), 1, 5),
+    sptd     = SPTD_CODE,
+    land_val = as.numeric(LAND_VAL),
+    prev_val = as.numeric(PREV_MKT_VAL)
+  )
 
-# Spatial ops ran in EPSG:2276 (planar); web tiles + MapLibre need EPSG:4326.
+# Spatial ops ran in EPSG:2276 (planar); web tiles need EPSG:4326.
 web <- st_transform(invtParcels, 4326)
 st_write(web, out_geojson, delete_dsn = TRUE)
 message(glue("Wrote {nrow(web)} public vacant parcels ({year}) -> {out_geojson}"))
