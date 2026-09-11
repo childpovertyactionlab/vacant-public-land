@@ -76,10 +76,15 @@ on.exit(DBI::dbDisconnect(con), add = TRUE)
 # One row per vacant account for the vintage, with owner name (for the crosswalk)
 # and situs address (for popups). account / account_owner / property_address all
 # share universal_id within an appraisal_year partition.
+# Vacancy = SPTD C11-C14 (land-use intent) AND improvement_value = 0 (no taxable
+# structure). improvement_value is the modern structure-absence signal newer CPAL
+# work uses (has_building in silver; the SB 15 "undeveloped" test in zoning-analysis);
+# combining with SPTD drops C11-C14 lots that actually carry a structure.
 accounts_sql <- glue_sql("
   SELECT a.source_account_id      AS ACCOUNT_NUM,
          a.gis_parcel_id          AS GIS_PARCEL_ID,
          a.sptd_code              AS SPTD_CODE,
+         a.improvement_value      AS IMPR_VAL,
          a.land_value             AS LAND_VAL,
          a.prev_market_value      AS PREV_MKT_VAL,
          o.owner_name             AS OWNER_NAME1,
@@ -94,10 +99,11 @@ accounts_sql <- glue_sql("
     ON a.universal_id = pa.universal_id
   WHERE a.appraisal_year = {year}
     AND a.sptd_code IN ({vals*})
+    AND a.improvement_value = 0
 ", vals = vacant_sptd, .con = con)
 
 vacant <- DBI::dbGetQuery(con, accounts_sql) |>
-  assert_columns(c("ACCOUNT_NUM", "GIS_PARCEL_ID", "SPTD_CODE", "LAND_VAL",
+  assert_columns(c("ACCOUNT_NUM", "GIS_PARCEL_ID", "SPTD_CODE", "IMPR_VAL", "LAND_VAL",
                    "PREV_MKT_VAL", "OWNER_NAME1", "STREET_NUM",
                    "FULL_STREET_NAME", "PROPERTY_CITY", "PROPERTY_ZIPCODE"),
                  where = glue("{silver_schema}.account join"))
