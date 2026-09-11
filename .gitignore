@@ -36,3 +36,9 @@ gargle-oauth*
 !data/City of Dallas Boundary.geojson
 
 **/*.quarto_ipynb
+
+# Internal review artifacts (saved renders, methods docs) — local only
+.review/
+
+# Quarto/knitr intermediates
+*.knit.md

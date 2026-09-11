@@ -121,18 +121,20 @@ cat(as.character(tags$script(HTML(glue(
 
 ```{r}
 #| echo: false
-#| results: asis
+#| output: asis
 # Right-hand count rows, one per ownership group. IDs let the picker update them.
-rows <- vapply(groups, function(g) {
-  as.character(tags$h4(
-    tags$div(class = "rounded-outline",
-             tags$b(id = glue("vpl-count-{slug(g)}"), fmt(def$by_group[[g]]))),
-    HTML(glue(" listed as <span style='color: {group_palette[[g]]};'>{tools::toTitleCase(tolower(g))}</span>"))
-  ))
-}, character(1))
-cat('<div class="right-card-col"><div style="width: 3%"></div><div class="card-side">')
-cat(paste(rows, collapse = "\n"))
-cat('</div></div>')
+# Emit COMPACT single-line HTML (no indentation/newlines) so pandoc passes it
+# through as raw HTML instead of escaping it as an indented code block.
+rows <- paste0(
+  "<h4><div class='rounded-outline'><b id='vpl-count-", vapply(groups, slug, character(1)), "'>",
+  vapply(groups, function(g) fmt(def$by_group[[g]]), character(1)),
+  "</b></div> listed as <span style='color:", unname(group_palette[groups]), ";'>",
+  vapply(groups, function(g) tools::toTitleCase(tolower(g)), character(1)),
+  "</span></h4>",
+  collapse = ""
+)
+cat("<div class=\"right-card-col\"><div style=\"width:3%\"></div><div class=\"card-side\">",
+    rows, "</div></div>", sep = "")
 ```
 
 ```{=html}
@@ -158,7 +160,8 @@ layer control.
 
 pmtiles_url <- function(f) f  # served from docs/ alongside index.html (relative URL)
 
-m <- mapboxgl(style = cpal_style, center = c(-96.7970, 32.7767), zoom = 10)
+m <- mapboxgl(style = cpal_style, center = c(-96.7970, 32.7767), zoom = 10,
+              height = "600px")   # fixed height so the map sits in the page flow
 
 # City boundary outline (tracked geojson; drawn as a reference frame).
 boundary <- sf::st_read("data/City of Dallas Boundary.geojson", quiet = TRUE) |>
