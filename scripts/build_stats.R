@@ -8,7 +8,7 @@ library(jsonlite)
 
 groups <- c("CITY OF DALLAS", "DALLAS COUNTY", "DART", "DALLAS COLLEGE",
             "DALLAS ISD", "DALLAS HOUSING AUTHORITY", "MULTIPLE OWNERS")
-vintages <- c("2023", "2025", "2026")   # extend freely; missing files are skipped
+vintages <- c("2023", "2024", "2025", "2026")   # extend freely; missing files are skipped
 
 stats <- list()
 for (y in vintages) {

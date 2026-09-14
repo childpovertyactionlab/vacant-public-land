@@ -20,20 +20,25 @@ library(glue)
 library(googlesheets4)
 
 # ---- Config -----------------------------------------------------------------
-year         <- 2025L                              # target appraisal vintage
+# Vintage from the first CLI arg (Rscript join.R 2024) or the VPL_YEAR env var;
+# defaults to 2025. scripts/build_all.sh loops the loaded years this way.
+.year_arg    <- commandArgs(trailingOnly = TRUE)
+year         <- as.integer(if (length(.year_arg) >= 1L) .year_arg[[1L]] else Sys.getenv("VPL_YEAR", "2025"))
 parcel_tax_year <- year - 1L                       # newest parcel snapshot (PARCELyyyy -> tax_year-1)
 vacant_sptd  <- c("C11", "C12", "C13", "C14")      # DCAD vacant-lot land-use codes
 keep_groups  <- c("CITY OF DALLAS", "DART", "DALLAS ISD", "MULTIPLE OWNERS",
                   "DALLAS HOUSING AUTHORITY", "DALLAS COUNTY", "DALLAS COLLEGE")
 crs_planar   <- 2276                               # NAD83 TX North Central (US ft)
 
-# Warehouse coordinates. CONFIRM against the live platform: catalogs are
-# parameterized dev_* vs prod in cpal-data-platform. The certified roll lives in
-# the *_car silver schema; parcel geometry lives in bronze.
-catalog        <- Sys.getenv("CPAL_DBX_CATALOG",        "silver")
-silver_schema  <- "silver_tx_dallas_cad_car"       # certified silver (current roll = silver_tx_dallas_cad)
-bronze_catalog <- Sys.getenv("CPAL_DBX_BRONZE_CATALOG", "bronze")
-bronze_schema  <- "bronze_tx_dallas_cad"
+# Warehouse coordinates — the CPAL Databricks env contract, same variable names
+# the evictions `databricks-api` service uses. CONFIRM catalog/schema against the
+# live platform: catalogs are parameterized dev_* vs prod in cpal-data-platform,
+# so they are env-overridable (defaults are the current prod locations). The
+# certified roll lives in the *_car silver schema; parcel geometry lives in bronze.
+catalog        <- Sys.getenv("DATABRICKS_CATALOG",        "silver")
+silver_schema  <- Sys.getenv("DATABRICKS_SCHEMA",         "silver_tx_dallas_cad_car")  # certified silver
+bronze_catalog <- Sys.getenv("DATABRICKS_BRONZE_CATALOG", "bronze")
+bronze_schema  <- Sys.getenv("DATABRICKS_BRONZE_SCHEMA",  "bronze_tx_dallas_cad")
 parcel_table   <- "parcel_geom_certified"          # cols: Acct, geometry_wkt, tax_year; CRS 2276
 
 # Owner crosswalk. The live Google Sheet is owned by the reviewer and is not
@@ -62,14 +67,25 @@ assert_columns <- function(df, required, where) {
 }
 
 # ---- Connect ----------------------------------------------------------------
-# CPAL standard: Databricks SQL warehouse over ODBC + OAuth (databricks CLI
-# profile / env). Alternative if the warehouse is unreachable from R: have a
-# Databricks job write the filtered result to a UC Volume as parquet/geojson and
-# read that here with arrow/sf instead of the two dbGetQuery() calls below.
-con <- DBI::dbConnect(
-  odbc::databricks(),
-  httpPath = Sys.getenv("CPAL_DBX_HTTP_PATH")      # SQL warehouse HTTP path
+# CPAL standard: Databricks SQL warehouse over ODBC + OAuth. odbc::databricks()
+# reads DATABRICKS_HOST + auth (DATABRICKS_TOKEN / OAuth / CLI profile) from the
+# environment; the SQL-warehouse HTTP path is built from DATABRICKS_WAREHOUSE_ID
+# (override wholesale with DATABRICKS_HTTP_PATH if DE hands you a full path).
+#
+# Alternative if the warehouse is unreachable from R (the auto-refresh path in
+# the plan): have a Databricks job write the filtered result to a UC Volume as
+# parquet/geojson and read that here with arrow/sf instead of the two
+# dbGetQuery() calls below — this connect block is the only thing that changes.
+.warehouse_id <- Sys.getenv("DATABRICKS_WAREHOUSE_ID")
+http_path <- Sys.getenv(
+  "DATABRICKS_HTTP_PATH",
+  if (nzchar(.warehouse_id)) sprintf("/sql/1.0/warehouses/%s", .warehouse_id) else ""
 )
+if (!nzchar(http_path)) {
+  stop("Set DATABRICKS_WAREHOUSE_ID (or DATABRICKS_HTTP_PATH) — no SQL warehouse to connect to.",
+       call. = FALSE)
+}
+con <- DBI::dbConnect(odbc::databricks(), httpPath = http_path)
 on.exit(DBI::dbDisconnect(con), add = TRUE)
 
 # ---- 1. Vacant public-candidate accounts ------------------------------------

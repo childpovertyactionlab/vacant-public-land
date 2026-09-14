@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Tile each vintage's parcel GeoJSON (EPSG:4326) into a PMTiles archive served
-# from docs/ by GitHub Pages. The layer name is pinned to "parcels" — index.qmd
-# references it as source_layer, so keep them in sync.
+# from docs/ by GitHub Pages. The layer name is pinned to "parcels" — docs/app.js
+# references it as source-layer, so keep them in sync.
 #
 # Inputs : data/public-vacant-land_<year>.geojson  (written by the join script)
 # Outputs: docs/public-vacant-land_<year>.pmtiles
 #
 # Requires tippecanoe (>= 2.x). Run once per vintage after regenerating its
-# GeoJSON. Does NOT run quarto render.
+# GeoJSON (scripts/build_all.sh does this for every loaded year).
 set -euo pipefail
 
 # Skip (don't fail the render) if tippecanoe is absent — the map just renders
@@ -19,7 +19,7 @@ fi
 
 YEARS=("$@")
 if [ ${#YEARS[@]} -eq 0 ]; then
-  YEARS=(2023 2025)   # default vintages; add 2026 when its GeoJSON exists
+  YEARS=(2023 2024 2025)   # default vintages; add 2026 when its GeoJSON exists
 fi
 
 for YEAR in "${YEARS[@]}"; do
