@@ -35,6 +35,7 @@ let BANDS = [];      // size bands
 let YEARS = [];
 let currentYear = null;
 let activeBands = new Set();
+let activeOwners = new Set();
 let MAP = null;
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,14 @@ function layerFilter(groupName) {
   return ["all", ["==", ["get", "OWNERSHIP_GROUP"], groupName], bandFilter()];
 }
 
+// Owner filtering rides on layer visibility rather than the filter expression:
+// there is already one layer per group, so hiding the layer is both cheaper than
+// re-evaluating a predicate per feature and keeps each group's colour attached
+// to its own layer.
+function layerVisible(year, groupName) {
+  return (year === currentYear && activeOwners.has(groupName)) ? "visible" : "none";
+}
+
 // Totals are summed from precomputed (group x band) cells rather than counted
 // from rendered tiles: vector tiles are clipped per viewport, so counting
 // features would undercount at low zoom and drift as the user pans.
@@ -90,6 +99,7 @@ function totalsFor(year) {
   let parcels = 0, acres = 0, land_val = 0;
   GROUPS.forEach((g) => {
     let p = 0, a = 0, v = 0;
+    if (!activeOwners.has(g.name)) { byGroup[g.name] = { parcels: 0, acres: 0, land_val: 0 }; return; }
     BANDS.forEach((b) => {
       if (!activeBands.has(b.id)) return;
       const c = (cells[g.name] || {})[b.id];
@@ -102,9 +112,19 @@ function totalsFor(year) {
   return { parcels, acres, land_val, byGroup };
 }
 
+// Option counts are cross-filtered: the lot-size options count only owners that
+// are currently on, and the owner options count only sizes that are on. That way
+// a number next to an option is what you would actually get by ticking it.
 function bandParcelCount(year, bandId) {
   const cells = (STATS[year] || {}).cells || {};
-  return GROUPS.reduce((n, g) => n + (((cells[g.name] || {})[bandId] || {}).parcels || 0), 0);
+  return GROUPS.reduce((n, g) => activeOwners.has(g.name)
+    ? n + (((cells[g.name] || {})[bandId] || {}).parcels || 0) : n, 0);
+}
+
+function ownerParcelCount(year, groupName) {
+  const cells = (STATS[year] || {}).cells || {};
+  return BANDS.reduce((n, b) => activeBands.has(b.id)
+    ? n + (((cells[groupName] || {})[b.id] || {}).parcels || 0) : n, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -289,32 +309,41 @@ function renderCards() {
   document.getElementById("vintage-label").textContent = currentYear;
   document.getElementById("total-acres").textContent = fmt(t.acres);
   document.getElementById("total-value").textContent = billions(t.land_val);
-  document.getElementById("counts").innerHTML = GROUPS.map((g) =>
-    `<div class="count-row"><b class="count-num" style="border-color:${g.color}">${fmt(t.byGroup[g.name].parcels)}</b>` +
-    ` listed as <span style="color:${g.color}">${g.label}</span></div>`
-  ).join("");
+  // Every group stays listed even when filtered out, dimmed rather than removed:
+  // the rows keep their position so the reader is not re-reading a shuffled list,
+  // and an excluded group is visibly excluded rather than silently absent.
+  document.getElementById("counts").innerHTML = GROUPS.map((g) => {
+    const off = activeOwners.has(g.name) ? "" : " is-off";
+    return `<div class="count-row${off}"><b class="count-num" style="border-color:${g.color}">${fmt(t.byGroup[g.name].parcels)}</b>` +
+      ` listed as <span style="color:${g.color}">${g.label}</span></div>`;
+  }).join("");
 }
 
 function applyFilter() {
   if (!MAP) return;
   YEARS.forEach((y) => GROUPS.forEach((g) => {
     const base = y + "__" + slug(g.name);
-    if (MAP.getLayer(base)) MAP.setFilter(base, layerFilter(g.name));
-    if (MAP.getLayer(base + "__line")) MAP.setFilter(base + "__line", layerFilter(g.name));
+    const vis = layerVisible(y, g.name);
+    [base, base + "__line"].forEach((id) => {
+      if (!MAP.getLayer(id)) return;
+      MAP.setFilter(id, layerFilter(g.name));
+      MAP.setLayoutProperty(id, "visibility", vis);
+    });
   }));
 }
 
-function refresh() {
-  applyFilter();
-  renderCards();
-  renderTrend();
-  updateSizeChips();
-  const note = document.getElementById("size-note");
-  const n = activeBands.size;
-  if (n === 0) {
-    note.textContent = "No size bands selected — the map is empty.";
-  } else if (n === BANDS.length) {
-    // State the concentration as measured, rather than asserting what the big
+function renderLegend() {
+  document.getElementById("legend").innerHTML = GROUPS.map((g) =>
+    `<span class="legend-item${activeOwners.has(g.name) ? "" : " is-off"}">` +
+    `<span class="swatch" style="background:${g.color}"></span>${g.label}</span>`
+  ).join("");
+}
+
+function noteText() {
+  if (!activeOwners.size || !activeBands.size) return "Nothing selected — the map is empty.";
+  const filtered = activeBands.size < BANDS.length || activeOwners.size < GROUPS.length;
+  if (!filtered) {
+    // State the concentration as measured rather than asserting what the big
     // parcels are: acreage is dominated by a small number of very large tracts,
     // so parcel count and acreage tell different stories.
     const big = BANDS[BANDS.length - 1];
@@ -323,84 +352,180 @@ function refresh() {
     const bigAc = GROUPS.reduce((a, g) => a + (((cells[g.name] || {})[big.id] || {}).acres || 0), 0);
     const bigN = bandParcelCount(currentYear, big.id);
     const share = all.acres ? Math.round((bigAc / all.acres) * 100) : 0;
-    note.textContent = `Showing every lot size. The ${big.label} band is ${fmt(bigN)} parcels `
-      + `(${Math.round((bigN / all.parcels) * 100)}% of the count) but ${share}% of all acreage — `
-      + `filter it out to see the smaller, lot-scale inventory.`;
-  } else {
-    note.textContent = "Filtered by lot size. Counts, acreage and the trend below all follow this selection.";
+    return `The ${big.label} band is ${fmt(bigN)} parcels (${Math.round((bigN / all.parcels) * 100)}% of the count) `
+      + `but ${share}% of all acreage — filter it out to see the smaller, lot-scale inventory.`;
   }
+  const t = totalsFor(currentYear);
+  return `Filtered: ${fmt(t.parcels)} parcels · ${fmt(t.acres)} acres · ${billions(t.land_val)}. `
+    + `The counts and trend below follow this selection.`;
 }
 
-function updateSizeChips() {
-  document.querySelectorAll(".size-option").forEach((el) => {
-    const on = activeBands.has(el.dataset.band);
-    el.dataset.on = on ? "1" : "0";
-    const n = el.querySelector(".size-n");
-    if (n) n.textContent = fmt(bandParcelCount(currentYear, el.dataset.band));
+function refresh() {
+  applyFilter();
+  renderCards();
+  renderLegend();
+  renderTrend();
+  syncDropdowns();
+  document.getElementById("size-note").textContent = noteText();
+}
+
+// ---------------------------------------------------------------------------
+// Dropdown filter controls
+//
+// A disclosure button plus a panel of checkboxes/radios, rather than a native
+// <select multiple> (which is unusable on touch and cannot show per-option
+// counts) or a row of chips (which wraps badly once there are three filters).
+// The button always states the current selection, so the row reads as a summary
+// even when every panel is closed.
+
+const DD = {};   // id -> { el, btn, panel, build, summary }
+
+function closeAllDropdowns(except) {
+  Object.values(DD).forEach((d) => {
+    if (d === except || d.panel.hidden) return;
+    d.panel.hidden = true;
+    d.el.dataset.open = "0";
+    d.btn.setAttribute("aria-expanded", "false");
   });
 }
 
-function buildSizePicker() {
-  const el = document.getElementById("size-picker");
-  el.innerHTML = "";
-  BANDS.forEach((b) => {
-    const label = document.createElement("label");
-    label.className = "size-option";
-    label.dataset.band = b.id;
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.checked = activeBands.has(b.id);
-    input.addEventListener("change", () => {
-      if (input.checked) activeBands.add(b.id); else activeBands.delete(b.id);
-      refresh();
-    });
-    const txt = document.createElement("span");
-    txt.textContent = b.label;
+function makeDropdown(id, build, summary) {
+  const el = document.getElementById(id);
+  const btn = el.querySelector(".dd-btn");
+  const panel = el.querySelector(".dd-panel");
+  const d = { el, btn, panel, build, summary };
+  DD[id] = d;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = panel.hidden;
+    closeAllDropdowns(d);
+    panel.hidden = !open;
+    el.dataset.open = open ? "1" : "0";
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) { const f = panel.querySelector("input"); if (f) f.focus(); }
+  });
+  panel.addEventListener("click", (e) => e.stopPropagation());
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !panel.hidden) {
+      panel.hidden = true; el.dataset.open = "0";
+      btn.setAttribute("aria-expanded", "false"); btn.focus();
+    }
+  });
+  return d;
+}
+
+function optRow({ type, name, checked, label, count, color, onChange }) {
+  const row = document.createElement("label");
+  row.className = "dd-opt";
+  row.dataset.on = checked ? "1" : "0";
+  const input = document.createElement("input");
+  input.type = type; if (name) input.name = name; input.checked = checked;
+  input.addEventListener("change", () => onChange(input.checked));
+  row.appendChild(input);
+  if (color) {
+    const sw = document.createElement("span");
+    sw.className = "dd-swatch"; sw.style.background = color;
+    row.appendChild(sw);
+  }
+  const l = document.createElement("span");
+  l.className = "dd-opt-l"; l.textContent = label;
+  row.appendChild(l);
+  if (count != null) {
     const n = document.createElement("span");
-    n.className = "size-n";
-    label.append(input, txt, n);
-    el.appendChild(label);
-  });
-  document.getElementById("size-reset").addEventListener("click", () => {
-    activeBands = new Set(BANDS.map((b) => b.id));
-    document.querySelectorAll(".size-option input").forEach((i) => { i.checked = true; });
-    refresh();
-  });
+    n.className = "dd-opt-n"; n.textContent = fmt(count);
+    row.appendChild(n);
+  }
+  return row;
 }
 
-function buildPicker() {
-  const el = document.getElementById("vintage-picker");
-  el.innerHTML = "";
-  YEARS.forEach((year) => {
-    const label = document.createElement("label");
-    label.className = "vintage-option";
-    const input = document.createElement("input");
-    input.type = "radio"; input.name = "vintage"; input.value = year;
-    input.checked = year === currentYear;
-    input.addEventListener("change", () => setVintage(year));
-    label.appendChild(input);
-    label.appendChild(document.createTextNode(" " + year));
-    el.appendChild(label);
+function bulkActions(panel, onAll, onNone) {
+  const wrap = document.createElement("div");
+  wrap.className = "dd-actions";
+  const a = document.createElement("button"); a.type = "button"; a.textContent = "Select all";
+  a.addEventListener("click", onAll);
+  const n = document.createElement("button"); n.type = "button"; n.textContent = "Clear";
+  n.addEventListener("click", onNone);
+  wrap.append(a, n);
+  panel.appendChild(wrap);
+}
+
+function buildVintagePanel() {
+  const panel = DD["dd-vintage"].panel;
+  panel.innerHTML = "";
+  YEARS.forEach((y) => panel.appendChild(optRow({
+    type: "radio", name: "vintage", checked: y === currentYear, label: y,
+    onChange: () => { setVintage(y); closeAllDropdowns(); },
+  })));
+}
+
+function buildSizePanel() {
+  const panel = DD["dd-size"].panel;
+  panel.innerHTML = "";
+  BANDS.forEach((b) => panel.appendChild(optRow({
+    type: "checkbox", checked: activeBands.has(b.id), label: b.label,
+    count: bandParcelCount(currentYear, b.id),
+    onChange: (on) => { on ? activeBands.add(b.id) : activeBands.delete(b.id); refresh(); },
+  })));
+  bulkActions(panel,
+    () => { activeBands = new Set(BANDS.map((b) => b.id)); refresh(); },
+    () => { activeBands = new Set(); refresh(); });
+}
+
+function buildOwnerPanel() {
+  const panel = DD["dd-owner"].panel;
+  panel.innerHTML = "";
+  GROUPS.forEach((g) => panel.appendChild(optRow({
+    type: "checkbox", checked: activeOwners.has(g.name), label: g.label, color: g.color,
+    count: ownerParcelCount(currentYear, g.name),
+    onChange: (on) => { on ? activeOwners.add(g.name) : activeOwners.delete(g.name); refresh(); },
+  })));
+  bulkActions(panel,
+    () => { activeOwners = new Set(GROUPS.map((g) => g.name)); refresh(); },
+    () => { activeOwners = new Set(); refresh(); });
+}
+
+// Summaries name the selection when it is short enough to name, and fall back to
+// a count. "All owners" is more useful than listing seven labels.
+function summarise(selected, total, one, many, allWord) {
+  if (selected.length === total) return allWord;
+  if (selected.length === 0) return "None";
+  if (selected.length === 1) return one(selected[0]);
+  return `${selected.length} of ${total} ${many}`;
+}
+
+function syncDropdowns() {
+  DD["dd-vintage"].btn.querySelector(".dd-val").textContent = currentYear;
+
+  const bandsOn = BANDS.filter((b) => activeBands.has(b.id));
+  DD["dd-size"].btn.querySelector(".dd-val").textContent =
+    summarise(bandsOn, BANDS.length, (b) => b.label, "sizes", "All sizes");
+
+  const ownersOn = GROUPS.filter((g) => activeOwners.has(g.name));
+  DD["dd-owner"].btn.querySelector(".dd-val").textContent =
+    summarise(ownersOn, GROUPS.length, (g) => g.label, "owners", "All owners");
+
+  // Rebuild panels so the cross-filtered counts and checked states stay current.
+  buildVintagePanel();
+  buildSizePanel();
+  buildOwnerPanel();
+}
+
+function buildControls() {
+  makeDropdown("dd-vintage");
+  makeDropdown("dd-size");
+  makeDropdown("dd-owner");
+  document.addEventListener("click", () => closeAllDropdowns());
+  document.getElementById("filters-reset").addEventListener("click", () => {
+    activeBands = new Set(BANDS.map((b) => b.id));
+    activeOwners = new Set(GROUPS.map((g) => g.name));
+    refresh();
   });
 }
 
 function setVintage(year) {
   currentYear = year;
-  if (MAP) {
-    YEARS.forEach((y) => GROUPS.forEach((g) => {
-      const vis = y === year ? "visible" : "none";
-      const base = y + "__" + slug(g.name);
-      if (MAP.getLayer(base)) MAP.setLayoutProperty(base, "visibility", vis);
-      if (MAP.getLayer(base + "__line")) MAP.setLayoutProperty(base + "__line", "visibility", vis);
-    }));
-  }
   refresh();
-}
-
-function buildLegend() {
-  document.getElementById("legend").innerHTML = GROUPS.map((g) =>
-    `<span class="legend-item"><span class="swatch" style="background:${g.color}"></span>${g.label}</span>`
-  ).join("");
 }
 
 // ---------------------------------------------------------------------------
@@ -412,14 +537,13 @@ async function main() {
   YEARS = Object.keys(STATS).sort();
   currentYear = YEARS[YEARS.length - 1];
   activeBands = new Set(BANDS.map((b) => b.id));
+  activeOwners = new Set(GROUPS.map((g) => g.name));
 
   // Render everything the stats file can drive BEFORE touching Mapbox. The map
   // needs WebGL, which some machines and locked-down browsers do not provide;
   // when it is missing only the map should degrade, not the counts, the filter
   // and the trend charts, which are plain DOM and SVG.
-  buildPicker();
-  buildSizePicker();
-  buildLegend();
+  buildControls();
   refresh();
 
   try {
@@ -478,7 +602,7 @@ async function initMap() {
         const layerId = year + "__" + slug(g.name);
         map.addLayer({
           id: layerId, type: "fill", source: srcId, "source-layer": "parcels",
-          layout: { visibility: year === currentYear ? "visible" : "none" },
+          layout: { visibility: layerVisible(year, g.name) },
           paint: {
             "fill-color": g.color,
             "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.9, 0.55],
@@ -487,7 +611,7 @@ async function initMap() {
         });
         map.addLayer({
           id: layerId + "__line", type: "line", source: srcId, "source-layer": "parcels",
-          layout: { visibility: year === currentYear ? "visible" : "none" },
+          layout: { visibility: layerVisible(year, g.name) },
           minzoom: 13,
           paint: { "line-color": g.color, "line-width": 0.6, "line-opacity": 0.9 },
           filter: layerFilter(g.name),

@@ -43,8 +43,18 @@ misleading on its own, and the page never shows one without the size filter besi
 it. Filter the large band out to see the lot-scale inventory — 4,398 parcels /
 18,677 acres becomes 4,057 parcels / 4,266 acres.
 
-The lot-size filter drives everything: the map layers, the ownership-group counts,
-the headline figures and the trend charts all follow the current selection.
+Three filters sit in one row — **vintage**, **lot size**, **owner** — each a
+dropdown whose button states the current selection, so the row reads as a summary
+of what you are looking at even with every panel closed. All three drive
+everything together: map layers, ownership-group counts, headline figures and the
+trend charts follow the combined selection.
+
+Option counts inside the dropdowns are **cross-filtered** — the lot-size options
+count only owners that are currently on, and the owner options count only sizes
+that are on — so the number beside an option is what you would actually get by
+ticking it. Filtered-out owners stay listed in the counts and the legend, dimmed
+rather than removed, so rows keep their position and an excluded group reads as
+excluded rather than silently absent.
 
 Counts are precomputed per (ownership group x size band) in
 `docs/vintage_stats.json` rather than counted in the browser. Vector tiles are

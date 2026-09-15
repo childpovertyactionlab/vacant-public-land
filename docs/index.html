@@ -35,18 +35,37 @@
       parcel for property details.
     </p>
 
-    <div class="controls">
-      <div class="control-group">
-        <span class="picker-label" id="vintage-label-el">Appraisal vintage</span>
-        <div class="vintage-picker" id="vintage-picker" role="radiogroup" aria-labelledby="vintage-label-el"></div>
+    <div class="controls" id="controls">
+      <div class="dd" id="dd-vintage">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-haspopup="true" aria-controls="dd-panel-vintage">
+          <span class="dd-key">Vintage</span>
+          <span class="dd-val">&mdash;</span>
+          <span class="dd-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dd-panel" id="dd-panel-vintage" role="group" aria-label="Appraisal vintage" hidden></div>
       </div>
-      <div class="control-group control-group--grow">
-        <span class="picker-label" id="size-label-el">Lot size</span>
-        <div class="size-picker" id="size-picker" role="group" aria-labelledby="size-label-el"></div>
-        <button type="button" class="size-reset" id="size-reset">Reset</button>
+
+      <div class="dd" id="dd-size">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-haspopup="true" aria-controls="dd-panel-size">
+          <span class="dd-key">Lot size</span>
+          <span class="dd-val">&mdash;</span>
+          <span class="dd-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dd-panel" id="dd-panel-size" role="group" aria-label="Lot size" hidden></div>
       </div>
+
+      <div class="dd" id="dd-owner">
+        <button type="button" class="dd-btn" aria-expanded="false" aria-haspopup="true" aria-controls="dd-panel-owner">
+          <span class="dd-key">Owner</span>
+          <span class="dd-val">&mdash;</span>
+          <span class="dd-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dd-panel" id="dd-panel-owner" role="group" aria-label="Ownership group" hidden></div>
+      </div>
+
+      <button type="button" class="dd-reset" id="filters-reset">Reset filters</button>
     </div>
-    <p class="size-note" id="size-note"></p>
+    <p class="size-note" id="size-note" role="status"></p>
 
     <div id="map"></div>
     <div class="legend" id="legend"></div>
