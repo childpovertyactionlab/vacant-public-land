@@ -1,0 +1,28 @@
+priority,pattern,ownership_group,note
+10,^DALLASCOUNTYAUDUBON,__EXCLUDE__,Audubon Society - private nonprofit; "Dallas County" is part of the chapter name
+11,^DALLASCOUNTYFARMBUREAU,__EXCLUDE__,Farm Bureau - private membership org
+12,^DALLASCOUNTYBUFFALOSOLDIERS,__EXCLUDE__,private youth group
+13,^DALLASCOUNTYMUD,__EXCLUDE__,municipal utility district - not in the original curation
+14,^DALLASCOUNTYMUNICIPAL,__EXCLUDE__,municipal utility district - not in the original curation
+15,^DALLASCOUNTYIRRIGATION,__EXCLUDE__,irrigation district - not in the original curation
+20,^DALLASHOUSINGFOUNDATION,__EXCLUDE__,separate nonprofit foundation; not the housing authority
+30,^DALLASCITYHOME,__EXCLUDE__,"Dallas City Homes Inc - private nonprofit developer"
+31,^DALLASCITYPLACE,__EXCLUDE__,CityPlace private partnership; distinct from the CityPlace TIF
+40,^DALLASFTWORTHCITIES,__EXCLUDE__,DFW Airport - jointly owned with Fort Worth; excluded by the original curation
+100,^DALLASCITY.*COUNTY,MULTIPLE OWNERS,city and county jointly on one account
+101,^DALLASAREARAPIDTRANSIT,DART,
+102,^DART$,DART,DCAD abbreviates the name outright in some vintages
+103,^DALLASTRANSITSYSTEM,DART,DART predecessor agency
+110,^DALLASISD,DALLAS ISD,
+111,^DALLASINDEPENDENTSCHOOL,DALLAS ISD,
+120,^DALLASCOLLEGE,DALLAS COLLEGE,
+130,^DALLASHOUSING(ACQUIS|AQUIS),DALLAS HOUSING AUTHORITY,"DHA land-holding corp; DCAD truncates and misspells this every vintage (ACQUISITION / ACQUISITIONS / ACQUISTION / ACQUISTITION / AQUISITION, with or without DEV CORP)"
+131,^DALLASHOUSINGAUTHORITY,DALLAS HOUSING AUTHORITY,
+132,^DALLASHOUSING$,DALLAS HOUSING AUTHORITY,truncated to the bare name in some vintages
+133,^HOUSINGAUTHORITYOFTHE,DALLAS HOUSING AUTHORITY,
+140,^DALLASCOUNTY,DALLAS COUNTY,"covers FLOOD CONTROL, HOSPITAL DISTRICT, PAUPERS CEM, U R D / URD / UTILITY & RECLAMATION, JUNIOR (college district), and the COUNTYT typo"
+141,^COUNTYOFDALLAS,DALLAS COUNTY,
+142,^NORTHWESTDALLASCOUNTY,DALLAS COUNTY,
+150,DALLASTIF,CITY OF DALLAS,"TIF districts are city instruments - CityPlace 920, Cypress Waters 991, Fort Worth Ave 210, Downtown Connection 120, Farmers Market 961, Oak Cliff Gateway 930, Skillman Corridor 160"
+151,^DALLASCITY,CITY OF DALLAS,"covers OF / ET AL / ETAL / HOUSING FINANCE CORP / PROPERTY MGMT and every spacing variant"
+152,^CITYOFDALLAS,CITY OF DALLAS,

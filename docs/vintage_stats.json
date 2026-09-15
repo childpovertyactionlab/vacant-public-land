@@ -1,0 +1,830 @@
+{
+  "generated": "2026-09-15",
+  "bands": [
+    {
+      "id": "lt01",
+      "label": "Under 0.1 ac",
+      "min": 0,
+      "max": 0.1
+    },
+    {
+      "id": "lot",
+      "label": "0.1 - 0.5 ac",
+      "min": 0.1,
+      "max": 0.5
+    },
+    {
+      "id": "small",
+      "label": "0.5 - 2 ac",
+      "min": 0.5,
+      "max": 2
+    },
+    {
+      "id": "site",
+      "label": "2 - 10 ac",
+      "min": 2,
+      "max": 10
+    },
+    {
+      "id": "large",
+      "label": "10+ ac",
+      "min": 10,
+      "max": null
+    }
+  ],
+  "groups": ["CITY OF DALLAS", "DALLAS COUNTY", "DART", "DALLAS COLLEGE", "DALLAS ISD", "DALLAS HOUSING AUTHORITY", "MULTIPLE OWNERS"],
+  "vintages": {
+    "2023": {
+      "total": {
+        "parcels": 4462,
+        "acres": 18232.8,
+        "land_val": 1538092030
+      },
+      "cells": {
+        "CITY OF DALLAS": {
+          "lt01": {
+            "parcels": 402,
+            "acres": 25.7,
+            "land_val": 25565480
+          },
+          "lot": {
+            "parcels": 1977,
+            "acres": 400.7,
+            "land_val": 205000820
+          },
+          "small": {
+            "parcels": 590,
+            "acres": 637.6,
+            "land_val": 383817170
+          },
+          "site": {
+            "parcels": 545,
+            "acres": 2568.2,
+            "land_val": 470510580
+          },
+          "large": {
+            "parcels": 295,
+            "acres": 12663.7,
+            "land_val": 201904760
+          }
+        },
+        "DALLAS COUNTY": {
+          "lt01": {
+            "parcels": 1,
+            "acres": 0.1,
+            "land_val": 133880
+          },
+          "lot": {
+            "parcels": 15,
+            "acres": 3.4,
+            "land_val": 2597640
+          },
+          "small": {
+            "parcels": 16,
+            "acres": 18.8,
+            "land_val": 4902370
+          },
+          "site": {
+            "parcels": 30,
+            "acres": 133,
+            "land_val": 36843030
+          },
+          "large": {
+            "parcels": 18,
+            "acres": 844.5,
+            "land_val": 7650110
+          }
+        },
+        "DART": {
+          "lt01": {
+            "parcels": 57,
+            "acres": 3.1,
+            "land_val": 6506320
+          },
+          "lot": {
+            "parcels": 111,
+            "acres": 25.5,
+            "land_val": 17614690
+          },
+          "small": {
+            "parcels": 30,
+            "acres": 31.4,
+            "land_val": 39211870
+          },
+          "site": {
+            "parcels": 24,
+            "acres": 109.1,
+            "land_val": 29067930
+          },
+          "large": {
+            "parcels": 4,
+            "acres": 76.8,
+            "land_val": 4824160
+          }
+        },
+        "DALLAS COLLEGE": {
+          "lt01": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "lot": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 1,
+            "land_val": 1050000
+          },
+          "site": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "large": {
+            "parcels": 2,
+            "acres": 27.4,
+            "land_val": 716110
+          }
+        },
+        "DALLAS ISD": {
+          "lt01": {
+            "parcels": 6,
+            "acres": 0.3,
+            "land_val": 289570
+          },
+          "lot": {
+            "parcels": 62,
+            "acres": 12.1,
+            "land_val": 10883850
+          },
+          "small": {
+            "parcels": 15,
+            "acres": 15.1,
+            "land_val": 10456280
+          },
+          "site": {
+            "parcels": 23,
+            "acres": 108.7,
+            "land_val": 28916240
+          },
+          "large": {
+            "parcels": 6,
+            "acres": 119.3,
+            "land_val": 5898760
+          }
+        },
+        "DALLAS HOUSING AUTHORITY": {
+          "lt01": {
+            "parcels": 36,
+            "acres": 2.7,
+            "land_val": 1620590
+          },
+          "lot": {
+            "parcels": 115,
+            "acres": 21.2,
+            "land_val": 8764550
+          },
+          "small": {
+            "parcels": 9,
+            "acres": 9.8,
+            "land_val": 10302040
+          },
+          "site": {
+            "parcels": 9,
+            "acres": 36.3,
+            "land_val": 17118270
+          },
+          "large": {
+            "parcels": 4,
+            "acres": 120.8,
+            "land_val": 3209010
+          }
+        },
+        "MULTIPLE OWNERS": {
+          "lt01": {
+            "parcels": 5,
+            "acres": 0.4,
+            "land_val": 245320
+          },
+          "lot": {
+            "parcels": 35,
+            "acres": 5.9,
+            "land_val": 1589680
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 0.7,
+            "land_val": 252720
+          },
+          "site": {
+            "parcels": 11,
+            "acres": 58.8,
+            "land_val": 485900
+          },
+          "large": {
+            "parcels": 7,
+            "acres": 150.4,
+            "land_val": 142330
+          }
+        }
+      }
+    },
+    "2024": {
+      "total": {
+        "parcels": 4369,
+        "acres": 18689.1,
+        "land_val": 1599897080
+      },
+      "cells": {
+        "CITY OF DALLAS": {
+          "lt01": {
+            "parcels": 375,
+            "acres": 24.1,
+            "land_val": 24544850
+          },
+          "lot": {
+            "parcels": 1905,
+            "acres": 388.7,
+            "land_val": 214076230
+          },
+          "small": {
+            "parcels": 586,
+            "acres": 631.8,
+            "land_val": 392027580
+          },
+          "site": {
+            "parcels": 547,
+            "acres": 2585.5,
+            "land_val": 489473130
+          },
+          "large": {
+            "parcels": 299,
+            "acres": 13079.5,
+            "land_val": 229221400
+          }
+        },
+        "DALLAS COUNTY": {
+          "lt01": {
+            "parcels": 1,
+            "acres": 0.1,
+            "land_val": 133880
+          },
+          "lot": {
+            "parcels": 15,
+            "acres": 3.4,
+            "land_val": 2921940
+          },
+          "small": {
+            "parcels": 18,
+            "acres": 21.3,
+            "land_val": 6631620
+          },
+          "site": {
+            "parcels": 31,
+            "acres": 142.4,
+            "land_val": 25864000
+          },
+          "large": {
+            "parcels": 21,
+            "acres": 900,
+            "land_val": 11273040
+          }
+        },
+        "DART": {
+          "lt01": {
+            "parcels": 56,
+            "acres": 3.1,
+            "land_val": 3414570
+          },
+          "lot": {
+            "parcels": 113,
+            "acres": 26,
+            "land_val": 21818570
+          },
+          "small": {
+            "parcels": 30,
+            "acres": 31.4,
+            "land_val": 40013560
+          },
+          "site": {
+            "parcels": 23,
+            "acres": 106.8,
+            "land_val": 28944890
+          },
+          "large": {
+            "parcels": 3,
+            "acres": 64.8,
+            "land_val": 3007200
+          }
+        },
+        "DALLAS COLLEGE": {
+          "lt01": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "lot": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 1,
+            "land_val": 1050000
+          },
+          "site": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "large": {
+            "parcels": 2,
+            "acres": 27.4,
+            "land_val": 716110
+          }
+        },
+        "DALLAS ISD": {
+          "lt01": {
+            "parcels": 6,
+            "acres": 0.3,
+            "land_val": 360040
+          },
+          "lot": {
+            "parcels": 60,
+            "acres": 11.7,
+            "land_val": 11417610
+          },
+          "small": {
+            "parcels": 15,
+            "acres": 15.1,
+            "land_val": 11764570
+          },
+          "site": {
+            "parcels": 21,
+            "acres": 102,
+            "land_val": 27718740
+          },
+          "large": {
+            "parcels": 6,
+            "acres": 119.3,
+            "land_val": 6076630
+          }
+        },
+        "DALLAS HOUSING AUTHORITY": {
+          "lt01": {
+            "parcels": 39,
+            "acres": 2.9,
+            "land_val": 2075630
+          },
+          "lot": {
+            "parcels": 125,
+            "acres": 23.5,
+            "land_val": 12200070
+          },
+          "small": {
+            "parcels": 9,
+            "acres": 9.8,
+            "land_val": 10312040
+          },
+          "site": {
+            "parcels": 9,
+            "acres": 36.3,
+            "land_val": 17118270
+          },
+          "large": {
+            "parcels": 4,
+            "acres": 120.8,
+            "land_val": 3209010
+          }
+        },
+        "MULTIPLE OWNERS": {
+          "lt01": {
+            "parcels": 4,
+            "acres": 0.3,
+            "land_val": 246510
+          },
+          "lot": {
+            "parcels": 27,
+            "acres": 4.8,
+            "land_val": 1494440
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 0.7,
+            "land_val": 252720
+          },
+          "site": {
+            "parcels": 10,
+            "acres": 53.8,
+            "land_val": 375900
+          },
+          "large": {
+            "parcels": 7,
+            "acres": 150.4,
+            "land_val": 142330
+          }
+        }
+      }
+    },
+    "2025": {
+      "total": {
+        "parcels": 4388,
+        "acres": 18698.6,
+        "land_val": 1699979790
+      },
+      "cells": {
+        "CITY OF DALLAS": {
+          "lt01": {
+            "parcels": 385,
+            "acres": 24.7,
+            "land_val": 26131500
+          },
+          "lot": {
+            "parcels": 1923,
+            "acres": 391.8,
+            "land_val": 230554920
+          },
+          "small": {
+            "parcels": 585,
+            "acres": 631.1,
+            "land_val": 357579380
+          },
+          "site": {
+            "parcels": 548,
+            "acres": 2590.6,
+            "land_val": 557035340
+          },
+          "large": {
+            "parcels": 299,
+            "acres": 13081.1,
+            "land_val": 259138300
+          }
+        },
+        "DALLAS COUNTY": {
+          "lt01": {
+            "parcels": 1,
+            "acres": 0.1,
+            "land_val": 133880
+          },
+          "lot": {
+            "parcels": 18,
+            "acres": 4.2,
+            "land_val": 3234600
+          },
+          "small": {
+            "parcels": 17,
+            "acres": 19.7,
+            "land_val": 4620690
+          },
+          "site": {
+            "parcels": 32,
+            "acres": 145.3,
+            "land_val": 25573970
+          },
+          "large": {
+            "parcels": 21,
+            "acres": 900.4,
+            "land_val": 11261120
+          }
+        },
+        "DART": {
+          "lt01": {
+            "parcels": 58,
+            "acres": 3.1,
+            "land_val": 9710830
+          },
+          "lot": {
+            "parcels": 112,
+            "acres": 26.1,
+            "land_val": 21214070
+          },
+          "small": {
+            "parcels": 32,
+            "acres": 33.9,
+            "land_val": 41946270
+          },
+          "site": {
+            "parcels": 23,
+            "acres": 106.8,
+            "land_val": 31933470
+          },
+          "large": {
+            "parcels": 3,
+            "acres": 64.8,
+            "land_val": 3007200
+          }
+        },
+        "DALLAS COLLEGE": {
+          "lt01": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "lot": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 1,
+            "land_val": 1050000
+          },
+          "site": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "large": {
+            "parcels": 2,
+            "acres": 27.4,
+            "land_val": 716110
+          }
+        },
+        "DALLAS ISD": {
+          "lt01": {
+            "parcels": 6,
+            "acres": 0.3,
+            "land_val": 382230
+          },
+          "lot": {
+            "parcels": 60,
+            "acres": 11.7,
+            "land_val": 11772790
+          },
+          "small": {
+            "parcels": 15,
+            "acres": 15,
+            "land_val": 13171080
+          },
+          "site": {
+            "parcels": 20,
+            "acres": 99.5,
+            "land_val": 32381960
+          },
+          "large": {
+            "parcels": 6,
+            "acres": 119.3,
+            "land_val": 6689070
+          }
+        },
+        "DALLAS HOUSING AUTHORITY": {
+          "lt01": {
+            "parcels": 37,
+            "acres": 2.8,
+            "land_val": 1899100
+          },
+          "lot": {
+            "parcels": 114,
+            "acres": 21.3,
+            "land_val": 12104020
+          },
+          "small": {
+            "parcels": 8,
+            "acres": 9.3,
+            "land_val": 12059640
+          },
+          "site": {
+            "parcels": 9,
+            "acres": 36.3,
+            "land_val": 18577870
+          },
+          "large": {
+            "parcels": 4,
+            "acres": 120.8,
+            "land_val": 3209010
+          }
+        },
+        "MULTIPLE OWNERS": {
+          "lt01": {
+            "parcels": 4,
+            "acres": 0.3,
+            "land_val": 246510
+          },
+          "lot": {
+            "parcels": 27,
+            "acres": 4.8,
+            "land_val": 1715150
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 0.7,
+            "land_val": 252720
+          },
+          "site": {
+            "parcels": 10,
+            "acres": 53.8,
+            "land_val": 534660
+          },
+          "large": {
+            "parcels": 7,
+            "acres": 150.4,
+            "land_val": 142330
+          }
+        }
+      }
+    },
+    "2026": {
+      "total": {
+        "parcels": 4398,
+        "acres": 18677.1,
+        "land_val": 1802380450
+      },
+      "cells": {
+        "CITY OF DALLAS": {
+          "lt01": {
+            "parcels": 412,
+            "acres": 27.3,
+            "land_val": 28333220
+          },
+          "lot": {
+            "parcels": 1984,
+            "acres": 403.5,
+            "land_val": 241588810
+          },
+          "small": {
+            "parcels": 593,
+            "acres": 638.5,
+            "land_val": 370063710
+          },
+          "site": {
+            "parcels": 553,
+            "acres": 2611.5,
+            "land_val": 587186850
+          },
+          "large": {
+            "parcels": 300,
+            "acres": 13093.9,
+            "land_val": 264628180
+          }
+        },
+        "DALLAS COUNTY": {
+          "lt01": {
+            "parcels": 0,
+            "acres": 0,
+            "land_val": 0
+          },
+          "lot": {
+            "parcels": 11,
+            "acres": 2.4,
+            "land_val": 1129570
+          },
+          "small": {
+            "parcels": 17,
+            "acres": 19.9,
+            "land_val": 3793990
+          },
+          "site": {
+            "parcels": 31,
+            "acres": 139.4,
+            "land_val": 18050000
+          },
+          "large": {
+            "parcels": 20,
+            "acres": 876.3,
+            "land_val": 9525790
+          }
+        },
+        "DART": {
+          "lt01": {
+            "parcels": 55,
+            "acres": 3,
+            "land_val": 37026740
+          },
+          "lot": {
+            "parcels": 111,
+            "acres": 25.9,
+            "land_val": 21102850
+          },
+          "small": {
+            "parcels": 32,
+            "acres": 33.9,
+            "land_val": 42096470
+          },
+          "site": {
+            "parcels": 24,
+            "acres": 110.1,
+            "land_val": 32417370
+          },
+          "large": {
+            "parcels": 3,
+            "acres": 64.8,
+            "land_val": 3007200
+          }
+        },
+        "DALLAS COLLEGE": {
+          "lt01": {
+            "parcels": 1,
+            "acres": 0.1,
+            "land_val": 133880
+          },
+          "lot": {
+            "parcels": 5,
+            "acres": 1.3,
+            "land_val": 1925180
+          },
+          "small": {
+            "parcels": 2,
+            "acres": 1.5,
+            "land_val": 2408700
+          },
+          "site": {
+            "parcels": 1,
+            "acres": 5.9,
+            "land_val": 9001230
+          },
+          "large": {
+            "parcels": 2,
+            "acres": 27.4,
+            "land_val": 716110
+          }
+        },
+        "DALLAS ISD": {
+          "lt01": {
+            "parcels": 6,
+            "acres": 0.3,
+            "land_val": 431900
+          },
+          "lot": {
+            "parcels": 57,
+            "acres": 10.8,
+            "land_val": 12955040
+          },
+          "small": {
+            "parcels": 16,
+            "acres": 15.7,
+            "land_val": 15279920
+          },
+          "site": {
+            "parcels": 20,
+            "acres": 98.4,
+            "land_val": 39544200
+          },
+          "large": {
+            "parcels": 6,
+            "acres": 119.3,
+            "land_val": 12144970
+          }
+        },
+        "DALLAS HOUSING AUTHORITY": {
+          "lt01": {
+            "parcels": 11,
+            "acres": 0.8,
+            "land_val": 440080
+          },
+          "lot": {
+            "parcels": 57,
+            "acres": 10.9,
+            "land_val": 8275360
+          },
+          "small": {
+            "parcels": 8,
+            "acres": 9.3,
+            "land_val": 13551730
+          },
+          "site": {
+            "parcels": 9,
+            "acres": 36.3,
+            "land_val": 20228490
+          },
+          "large": {
+            "parcels": 3,
+            "acres": 78.8,
+            "land_val": 2249820
+          }
+        },
+        "MULTIPLE OWNERS": {
+          "lt01": {
+            "parcels": 4,
+            "acres": 0.3,
+            "land_val": 329640
+          },
+          "lot": {
+            "parcels": 26,
+            "acres": 4.6,
+            "land_val": 1883740
+          },
+          "small": {
+            "parcels": 1,
+            "acres": 0.7,
+            "land_val": 252720
+          },
+          "site": {
+            "parcels": 10,
+            "acres": 53.8,
+            "land_val": 534660
+          },
+          "large": {
+            "parcels": 7,
+            "acres": 150.4,
+            "land_val": 142330
+          }
+        }
+      }
+    }
+  }
+}

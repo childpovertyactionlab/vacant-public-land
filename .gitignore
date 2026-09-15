@@ -1,6 +1,48 @@
+# --- R / RStudio ---
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 
+# --- Quarto ---
 /.quarto/
+
+# --- Secrets & credentials (never commit) ---
+.env
+.env.*
+!.env.example
+.Renviron
+credentials*
+client_secret*
+*.pem
+*.key
+# googlesheets4 / gargle OAuth token caches
+.httr-oauth
+.secrets/
+*_token.rds
+gargle-oauth*
+
+# --- Regenerable spatial data (rebuild from scripts + warehouse) ---
+*.geojson
+*.gpkg
+*.parquet
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+
+# Keep the small city boundary and any served vector tiles
+!data/City of Dallas Boundary.geojson
+
+**/*.quarto_ipynb
+
+# Internal review artifacts (saved renders, methods docs) — local only
+.review/
+
+# Quarto/knitr intermediates
+*.knit.md
+!docs/city-of-dallas-boundary.geojson
+
+# Runtime Mapbox token — injected in CI from the MAPBOX_TOKEN secret; local copy only
+docs/config.js
