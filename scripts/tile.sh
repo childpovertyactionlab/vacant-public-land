@@ -19,7 +19,7 @@ fi
 
 YEARS=("$@")
 if [ ${#YEARS[@]} -eq 0 ]; then
-  YEARS=(2023 2024 2025)   # default vintages; add 2026 when its GeoJSON exists
+  YEARS=(2023 2024 2025 2026)   # default vintages
 fi
 
 for YEAR in "${YEARS[@]}"; do
