@@ -18,6 +18,8 @@ library(sf)
 library(dplyr)
 library(glue)
 
+source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])), "load_env.R"))
+
 # ---- Config -----------------------------------------------------------------
 crs_planar <- 2276                                  # match the parcel layer
 out_path   <- "data/mask_water_parks.gpkg"

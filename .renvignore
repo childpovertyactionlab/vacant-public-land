@@ -1,0 +1,5 @@
+# The original 2023 pipeline, kept for provenance only. It cannot run: hardcoded
+# Windows Dropbox paths, the retired Data.gdb, and DCAD CSV/shapefile inputs that
+# the warehouse replaced. Excluded from renv's dependency scan so its dead
+# dependencies (cpaltemplates, rio) stay out of the lockfile.
+scripts/Publicly Owned Land.R
