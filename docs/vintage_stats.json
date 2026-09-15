@@ -1,14 +1,50 @@
 {
   "2023": {
-    "total": 4203,
+    "total": 4462,
     "by_group": {
-      "CITY OF DALLAS": 3642,
-      "DALLAS COUNTY": 78,
+      "CITY OF DALLAS": 3809,
+      "DALLAS COUNTY": 80,
+      "DART": 226,
+      "DALLAS COLLEGE": 3,
+      "DALLAS ISD": 112,
+      "DALLAS HOUSING AUTHORITY": 173,
+      "MULTIPLE OWNERS": 59
+    }
+  },
+  "2024": {
+    "total": 4369,
+    "by_group": {
+      "CITY OF DALLAS": 3712,
+      "DALLAS COUNTY": 86,
       "DART": 225,
       "DALLAS COLLEGE": 3,
-      "DALLAS ISD": 114,
-      "DALLAS HOUSING AUTHORITY": 85,
-      "MULTIPLE OWNERS": 56
+      "DALLAS ISD": 108,
+      "DALLAS HOUSING AUTHORITY": 186,
+      "MULTIPLE OWNERS": 49
+    }
+  },
+  "2025": {
+    "total": 4388,
+    "by_group": {
+      "CITY OF DALLAS": 3740,
+      "DALLAS COUNTY": 89,
+      "DART": 228,
+      "DALLAS COLLEGE": 3,
+      "DALLAS ISD": 107,
+      "DALLAS HOUSING AUTHORITY": 172,
+      "MULTIPLE OWNERS": 49
+    }
+  },
+  "2026": {
+    "total": 4398,
+    "by_group": {
+      "CITY OF DALLAS": 3842,
+      "DALLAS COUNTY": 79,
+      "DART": 225,
+      "DALLAS COLLEGE": 11,
+      "DALLAS ISD": 105,
+      "DALLAS HOUSING AUTHORITY": 88,
+      "MULTIPLE OWNERS": 48
     }
   }
 }
