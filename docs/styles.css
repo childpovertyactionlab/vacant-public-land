@@ -48,14 +48,6 @@ body {
 
 /* Intro + controls */
 .intro { margin: 0 0 14px; color: #45514f; }
-.controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
-.picker-label { font-weight: 600; color: var(--teal-900); }
-.vintage-picker { display: inline-flex; gap: 8px; }
-.vintage-option {
-  cursor: pointer; user-select: none; padding: 3px 12px;
-  border: 1px solid var(--teal-700); border-radius: 999px; font-weight: 600; color: var(--teal-900);
-}
-.vintage-option input { margin-right: 6px; accent-color: var(--teal-700); }
 
 /* Map */
 #map { height: 620px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }

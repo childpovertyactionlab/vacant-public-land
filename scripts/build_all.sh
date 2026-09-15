@@ -4,10 +4,11 @@
 #   scripts/build_all.sh              # builds 2023 2024 2025 2026 (currently loaded)
 #   scripts/build_all.sh 2024 2025    # a subset
 #
-# Add 2026 here once the platform team loads the 2026 certified roll + PARCEL2026.
-# Prereqs: warehouse access (DATABRICKS_* in .env), data/owner_name_rules.csv (the
-# owner -> ownership-group crosswalk), tippecanoe. The water/parks mask
-# (scripts/build_mask.R) is optional; set VPL_SKIP_MASK=1 to build without it.
+# Prereqs: warehouse access (DATABRICKS_* in .env), data/owner_rules.csv (the
+# owner-name pattern -> ownership-group crosswalk), and tippecanoe on PATH.
+#
+# The water/parks mask is NOT applied by default; set VPL_SKIP_MASK=0 to opt in.
+# See the mask note in README.md before doing so.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

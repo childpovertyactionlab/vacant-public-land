@@ -30,7 +30,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Inject Mapbox token into config.js
-        run: printf 'window.CPAL_MAPBOX_TOKEN = "%s";\n' "${{ secrets.MAPBOX_TOKEN }}" > docs/config.js
+        env:
+          # Passed through the environment rather than interpolated into the
+          # script body, so the secret never becomes part of the shell text.
+          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+        run: |
+          if [ -z "$MAPBOX_TOKEN" ]; then
+            echo "::error::MAPBOX_TOKEN secret is empty or unset — refusing to deploy a map with no token."
+            exit 1
+          fi
+          printf 'window.CPAL_MAPBOX_TOKEN = "%s";\n' "$MAPBOX_TOKEN" > docs/config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -221,14 +221,17 @@ publicAccounts <- if (file.exists(crosswalk_rules)) {
 
   matched |> select(-.owner_norm) |> filter(!is.na(OWNERSHIP_GROUP))
 } else {
-  cleanOwners <- if (file.exists(crosswalk_csv)) {
+  # NOTE the parentheses: R's native pipe binds tighter than `else`, so
+  # `if (c) {A} else {B} |> f()` applies f only to the else branch. Without them
+  # the schema contract silently skipped the committed-CSV path.
+  cleanOwners <- (if (file.exists(crosswalk_csv)) {
     message("Reading account-keyed owner crosswalk from ", crosswalk_csv)
     readr::read_csv(crosswalk_csv, show_col_types = FALSE)
   } else {
     message("No ", crosswalk_csv, " found; reading the live Google Sheet (needs access). ",
             "Ask the reviewer for a re-curated CSV to make the build reproducible.")
     read_sheet(ss = crosswalk_sheet, sheet = crosswalk_tab)
-  } |>
+  }) |>
     assert_columns(c("ACCOUNT_NUM", "OWNERSHIP_GROUP"), where = "owner crosswalk")
 
   vacant |>
@@ -310,12 +313,20 @@ publicParcel <- parcels |>
 boundary <- st_read(boundary_path, quiet = TRUE) |> st_transform(crs_planar)
 publicDallas <- publicParcel[st_union(boundary), ]        # keep parcels within the city
 
-apply_mask <- !identical(tolower(Sys.getenv("VPL_SKIP_MASK", "0")), "1")
+# Default is SKIP. The reconstructed water/parks mask is much broader than the
+# retired Dropbox layer (it erases 12.6% of the parcels the published 2023 map
+# kept), so applying it must be a deliberate opt-in: VPL_SKIP_MASK=0. Defaulting
+# the other way silently regenerates a materially different dataset for anyone
+# who has run build_mask.R once and whose .env predates this flag.
+apply_mask <- identical(tolower(Sys.getenv("VPL_SKIP_MASK", "1")), "0")
 if (apply_mask && file.exists(mask_path)) {
+  message(glue("VPL_SKIP_MASK=0 — APPLYING the water/parks mask from {mask_path}. ",
+               "This erases a materially different set of parcels than the published ",
+               "map; see the mask note in README.md."))
   mask <- st_read(mask_path, quiet = TRUE) |> st_transform(crs_planar) |> st_union()
   invtParcels <- st_difference(publicDallas, mask)        # erase water + parks
 } else if (!apply_mask) {
-  message(glue("VPL_SKIP_MASK=1 — writing WITHOUT the water/parks exclusion ",
+  message(glue("Writing WITHOUT the water/parks exclusion (default) ",
                "(mask {ifelse(file.exists(mask_path), 'present but skipped', 'not built')})."))
   invtParcels <- publicDallas
 } else {

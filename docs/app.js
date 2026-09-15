@@ -28,7 +28,19 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const fmt = (n) => Math.round(n || 0).toLocaleString();
 const dollar = (v) => (v === null || v === "" || v === undefined || isNaN(+v)) ? "—" : "$" + Math.round(+v).toLocaleString();
 const acresTxt = (a) => (a == null || isNaN(+a)) ? "—" : (+a < 1 ? (+a).toFixed(2) : fmt(a));
-const billions = (v) => "$" + (v / 1e9).toFixed(2) + "B";
+// Magnitude-adaptive money. A fixed "B" scale renders real figures as $0.00B
+// once a filter narrows the selection (Multiple Owners in 2026 is $3.1M), which
+// is indistinguishable from zero, and collapses both chart gridline labels to
+// the same string.
+function money(v, digits) {
+  const n = Math.abs(+v || 0);
+  const d = (x, def) => (digits == null ? def : digits);
+  if (n >= 1e9) return "$" + (v / 1e9).toFixed(d(v, 2)) + "B";
+  if (n >= 1e6) return "$" + (v / 1e6).toFixed(d(v, 1)) + "M";
+  if (n >= 1e3) return "$" + Math.round(v / 1e3) + "K";
+  return "$" + Math.round(v || 0).toLocaleString();
+}
+const billions = (v) => money(v);
 
 let STATS = {};      // vintages
 let BANDS = [];      // size bands
@@ -130,15 +142,19 @@ function ownerParcelCount(year, groupName) {
 // ---------------------------------------------------------------------------
 // Popup
 
+const esc = (v) => String(v == null ? "" : v)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
 function popupHTML(p, lngLat) {
-  const owner = LABEL[p.OWNERSHIP_GROUP] || p.OWNERSHIP_GROUP || "Public owner";
+  const owner = esc(LABEL[p.OWNERSHIP_GROUP] || p.OWNERSHIP_GROUP || "Public owner");
   const color = COLOR[p.OWNERSHIP_GROUP] || ACCENT;
-  const addr = (p.address && String(p.address).trim()) ? p.address : "";
-  const loc = addr ? addr + (p.zip ? ", " + p.zip : "") : "Address not listed";
+  const addr = (p.address && String(p.address).trim()) ? esc(p.address) : "";
+  const loc = addr ? addr + (p.zip ? ", " + esc(p.zip) : "") : "Address not listed";
   const sv = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lngLat.lat},${lngLat.lng}`;
   const locHtml = addr ? `<a href="${sv}" target="_blank" rel="noopener">${loc}</a>` : loc;
   const acct = p.ACCOUNT_NUM
-    ? `<a href="https://www.dallascad.org/AcctDetail.aspx?ID=${encodeURIComponent(p.ACCOUNT_NUM)}" target="_blank" rel="noopener">${p.ACCOUNT_NUM}</a>`
+    ? `<a href="https://www.dallascad.org/AcctDetail.aspx?ID=${encodeURIComponent(p.ACCOUNT_NUM)}" target="_blank" rel="noopener">${esc(p.ACCOUNT_NUM)}</a>`
     : "—";
   const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
   return `<div class="pp">
@@ -148,7 +164,7 @@ function popupHTML(p, lngLat) {
       ${row("Lot size", acresTxt(p.acres) + " ac")}
       ${row("Land value", dollar(p.land_val))}
       ${row("Prev. market", dollar(p.prev_val))}
-      ${row("SPTD", p.sptd || "—")}
+      ${row("SPTD", esc(p.sptd) || "—")}
       ${row("Account", acct)}
     </dl>
   </div>`;
@@ -160,7 +176,7 @@ function popupHTML(p, lngLat) {
 const METRICS = [
   { key: "parcels",  label: "Parcels",            fmt: fmt,       tick: fmt },
   { key: "acres",    label: "Acres",              fmt: fmt,       tick: fmt },
-  { key: "land_val", label: "Assessed land value", fmt: billions, tick: (v) => "$" + (v / 1e9).toFixed(1) + "B" },
+  { key: "land_val", label: "Assessed land value", fmt: billions, tick: (v) => money(v, 1) },
 ];
 
 const W = 300, H = 96, PAD = { t: 10, r: 12, b: 18, l: 46 };
@@ -435,39 +451,52 @@ function bulkActions(panel, onAll, onNone) {
   panel.appendChild(wrap);
 }
 
-function buildVintagePanel() {
-  const panel = DD["dd-vintage"].panel;
+// Panels are built ONCE and then updated in place. Rebuilding them from inside
+// an option's own change handler removed the element the user was operating:
+// a keyboard user ticking a checkbox with Space lost focus to <body> mid-event,
+// so the next Tab restarted from the top of the document.
+function buildPanelOnce(ddId, items) {
+  const d = DD[ddId];
+  if (d.rows) return;
+  const panel = d.panel;
   panel.innerHTML = "";
-  YEARS.forEach((y) => panel.appendChild(optRow({
-    type: "radio", name: "vintage", checked: y === currentYear, label: y,
+  d.rows = items.map((it) => {
+    const row = optRow(it);
+    panel.appendChild(row);
+    return { key: it.key, el: row, input: row.querySelector("input"), n: row.querySelector(".dd-opt-n") };
+  });
+  if (items.bulk) items.bulk(panel);
+}
+
+function buildVintagePanel() {
+  buildPanelOnce("dd-vintage", YEARS.map((y) => ({
+    key: y, type: "radio", name: "vintage", checked: y === currentYear, label: y,
     onChange: () => { setVintage(y); closeAllDropdowns(); },
   })));
 }
 
 function buildSizePanel() {
-  const panel = DD["dd-size"].panel;
-  panel.innerHTML = "";
-  BANDS.forEach((b) => panel.appendChild(optRow({
-    type: "checkbox", checked: activeBands.has(b.id), label: b.label,
+  const items = BANDS.map((b) => ({
+    key: b.id, type: "checkbox", checked: activeBands.has(b.id), label: b.label,
     count: bandParcelCount(currentYear, b.id),
     onChange: (on) => { on ? activeBands.add(b.id) : activeBands.delete(b.id); refresh(); },
-  })));
-  bulkActions(panel,
+  }));
+  items.bulk = (panel) => bulkActions(panel,
     () => { activeBands = new Set(BANDS.map((b) => b.id)); refresh(); },
     () => { activeBands = new Set(); refresh(); });
+  buildPanelOnce("dd-size", items);
 }
 
 function buildOwnerPanel() {
-  const panel = DD["dd-owner"].panel;
-  panel.innerHTML = "";
-  GROUPS.forEach((g) => panel.appendChild(optRow({
-    type: "checkbox", checked: activeOwners.has(g.name), label: g.label, color: g.color,
+  const items = GROUPS.map((g) => ({
+    key: g.name, type: "checkbox", checked: activeOwners.has(g.name), label: g.label, color: g.color,
     count: ownerParcelCount(currentYear, g.name),
     onChange: (on) => { on ? activeOwners.add(g.name) : activeOwners.delete(g.name); refresh(); },
-  })));
-  bulkActions(panel,
+  }));
+  items.bulk = (panel) => bulkActions(panel,
     () => { activeOwners = new Set(GROUPS.map((g) => g.name)); refresh(); },
     () => { activeOwners = new Set(); refresh(); });
+  buildPanelOnce("dd-owner", items);
 }
 
 // Summaries name the selection when it is short enough to name, and fall back to
@@ -480,20 +509,33 @@ function summarise(selected, total, one, many, allWord) {
 }
 
 function syncDropdowns() {
-  DD["dd-vintage"].btn.querySelector(".dd-val").textContent = currentYear;
+  buildVintagePanel();
+  buildSizePanel();
+  buildOwnerPanel();
 
+  DD["dd-vintage"].btn.querySelector(".dd-val").textContent = currentYear;
   const bandsOn = BANDS.filter((b) => activeBands.has(b.id));
   DD["dd-size"].btn.querySelector(".dd-val").textContent =
     summarise(bandsOn, BANDS.length, (b) => b.label, "sizes", "All sizes");
-
   const ownersOn = GROUPS.filter((g) => activeOwners.has(g.name));
   DD["dd-owner"].btn.querySelector(".dd-val").textContent =
     summarise(ownersOn, GROUPS.length, (g) => g.label, "owners", "All owners");
 
-  // Rebuild panels so the cross-filtered counts and checked states stay current.
-  buildVintagePanel();
-  buildSizePanel();
-  buildOwnerPanel();
+  // Update the existing rows rather than replacing them, so focus survives.
+  DD["dd-vintage"].rows.forEach((r) => {
+    r.input.checked = r.key === currentYear;
+    r.el.dataset.on = r.input.checked ? "1" : "0";
+  });
+  DD["dd-size"].rows.forEach((r) => {
+    r.input.checked = activeBands.has(r.key);
+    r.el.dataset.on = r.input.checked ? "1" : "0";
+    if (r.n) r.n.textContent = fmt(bandParcelCount(currentYear, r.key));
+  });
+  DD["dd-owner"].rows.forEach((r) => {
+    r.input.checked = activeOwners.has(r.key);
+    r.el.dataset.on = r.input.checked ? "1" : "0";
+    if (r.n) r.n.textContent = fmt(ownerParcelCount(currentYear, r.key));
+  });
 }
 
 function buildControls() {
@@ -535,14 +577,33 @@ async function main() {
     await initMap();
   } catch (err) {
     console.error("map init failed:", err);
+    // Name the actual cause. A missing/empty Mapbox token throws synchronously
+    // out of the Map constructor, so a misconfigured deploy would otherwise tell
+    // every visitor their browser lacks WebGL.
+    let why;
+    if (!TOKEN) {
+      why = "the Mapbox token is missing (copy docs/config.example.js to docs/config.js "
+          + "locally, or set the MAPBOX_TOKEN repo secret for the deployed site).";
+    } else if (!hasWebGL()) {
+      why = "this browser does not support WebGL.";
+    } else {
+      why = "of an unexpected error — see the browser console.";
+    }
     const el = document.getElementById("map");
     el.innerHTML = "";
     const msg = document.createElement("div");
     msg.className = "map-error";
-    msg.textContent = "The interactive map could not load in this browser (WebGL unavailable). "
-      + "The figures and trend below are unaffected.";
+    msg.textContent = "The interactive map could not load because " + why
+      + " The figures and trend below are unaffected.";
     el.appendChild(msg);
   }
+}
+
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl") || c.getContext("experimental-webgl"));
+  } catch (e) { return false; }
 }
 
 async function initMap() {
@@ -605,13 +666,20 @@ async function initMap() {
         map.on("mousemove", layerId, (e) => {
           map.getCanvas().style.cursor = "pointer";
           if (!e.features.length) return;
-          if (hover.id !== null) map.setFeatureState(hover, { hover: false });
-          hover = { source: srcId, sourceLayer: "parcels", id: e.features[0].id };
-          map.setFeatureState(hover, { hover: true });
+          if (hover.id !== null) {
+            map.setFeatureState({ source: hover.source, sourceLayer: hover.sourceLayer, id: hover.id }, { hover: false });
+          }
+          hover = { source: srcId, sourceLayer: "parcels", id: e.features[0].id, layerId };
+          map.setFeatureState({ source: srcId, sourceLayer: "parcels", id: hover.id }, { hover: true });
         });
         map.on("mouseleave", layerId, () => {
+          // Only clear the highlight this layer owns: moving straight from one
+          // group's parcel onto an adjacent group's fires the new layer's
+          // mousemove before this mouseleave, and an unguarded clear would wipe
+          // the highlight that was just set.
+          if (hover.id === null || hover.layerId !== layerId) return;
           map.getCanvas().style.cursor = "";
-          if (hover.id !== null) map.setFeatureState(hover, { hover: false });
+          map.setFeatureState({ source: hover.source, sourceLayer: hover.sourceLayer, id: hover.id }, { hover: false });
           hover = { id: null };
         });
         map.on("click", layerId, (e) => {
