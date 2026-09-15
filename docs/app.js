@@ -256,27 +256,12 @@ function renderTrend() {
     grid.appendChild(card);
   });
 
-  renderTrendTable(byYear);
   wireChartTooltips();
 }
 
-function renderTrendTable(byYear) {
-  const t = document.getElementById("trend-table");
-  t.innerHTML = "";
-  const head = t.insertRow();
-  ["Vintage", "Parcels", "Acres", "Assessed land value"].forEach((h) => {
-    const th = document.createElement("th"); th.scope = "col"; th.textContent = h; head.appendChild(th);
-  });
-  YEARS.forEach((y) => {
-    const r = t.insertRow();
-    const th = document.createElement("th"); th.scope = "row"; th.textContent = y; r.appendChild(th);
-    [fmt(byYear[y].parcels), fmt(byYear[y].acres), billions(byYear[y].land_val)].forEach((v) => {
-      r.insertCell().textContent = v;
-    });
-  });
-}
-
-// Tooltips enhance, never gate: every value here is also in the table view.
+// Tooltips enhance, never gate. Each point also carries an aria-label with its
+// year and value, and the card states the selected vintage's value and its delta
+// as text, so no figure is reachable only by hovering.
 let TT = null;
 function wireChartTooltips() {
   if (!TT) { TT = document.createElement("div"); TT.className = "tt"; TT.hidden = true; document.body.appendChild(TT); }
