@@ -1,7 +1,7 @@
 // Vacant Public Land — Mapbox GL JS + native PMTiles.
 // Mapbox GL renders the CPAL mapbox:// style; parcels come from per-vintage
-// PMTiles vector sources (native v3 support). Vintages are data-driven from
-// vintage_stats.json.
+// PMTiles vector sources (native v3 support). Vintages, size bands and every
+// headline figure are data-driven from vintage_stats.json.
 
 const TOKEN = window.CPAL_MAPBOX_TOKEN;
 mapboxgl.accessToken = TOKEN;
@@ -19,9 +19,26 @@ const GROUPS = [
 const LABEL = Object.fromEntries(GROUPS.map((g) => [g.name, g.label]));
 const COLOR = Object.fromEntries(GROUPS.map((g) => [g.name, g.color]));
 
+// Single accent for the trend charts. Each chart plots one series, so there is
+// no categorical palette here and no legend — the card's label names the metric.
+const ACCENT = "#008097";
+const SURFACE = "#ffffff";
+
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-const fmt = (n) => (n || 0).toLocaleString();
+const fmt = (n) => Math.round(n || 0).toLocaleString();
 const dollar = (v) => (v === null || v === "" || v === undefined || isNaN(+v)) ? "—" : "$" + Math.round(+v).toLocaleString();
+const acresTxt = (a) => (a == null || isNaN(+a)) ? "—" : (+a < 1 ? (+a).toFixed(2) : fmt(a));
+const billions = (v) => "$" + (v / 1e9).toFixed(2) + "B";
+
+let STATS = {};      // vintages
+let BANDS = [];      // size bands
+let YEARS = [];
+let currentYear = null;
+let activeBands = new Set();
+let MAP = null;
+
+// ---------------------------------------------------------------------------
+// Geometry helpers
 
 // A world polygon with the city cut out as holes — fills everything OUTSIDE
 // Dallas so the city reads as the focus (a "spotlight" mask).
@@ -36,7 +53,6 @@ function maskGeo(boundary) {
   return { type: "Feature", geometry: { type: "Polygon", coordinates: [world, ...holes] } };
 }
 
-// Bounding box [minLng, minLat, maxLng, maxLat] of a GeoJSON FeatureCollection.
 function bbox(geo) {
   let a = 180, b = 90, c = -180, d = -90;
   const walk = (co) => {
@@ -47,15 +63,60 @@ function bbox(geo) {
   return [a, b, c, d];
 }
 
+// ---------------------------------------------------------------------------
+// Filtering
+
+// Mapbox filter for the active size bands. An empty selection shows nothing,
+// which matches what the count cards will read.
+function bandFilter() {
+  const on = BANDS.filter((b) => activeBands.has(b.id));
+  if (!on.length) return ["==", ["get", "acres"], -1];   // acres >= 0 always, so this matches nothing
+  const parts = on.map((b) => (b.max == null || b.max === undefined)
+    ? [">=", ["get", "acres"], b.min]
+    : ["all", [">=", ["get", "acres"], b.min], ["<", ["get", "acres"], b.max]]);
+  return parts.length === 1 ? parts[0] : ["any", ...parts];
+}
+
+function layerFilter(groupName) {
+  return ["all", ["==", ["get", "OWNERSHIP_GROUP"], groupName], bandFilter()];
+}
+
+// Totals are summed from precomputed (group x band) cells rather than counted
+// from rendered tiles: vector tiles are clipped per viewport, so counting
+// features would undercount at low zoom and drift as the user pans.
+function totalsFor(year) {
+  const cells = (STATS[year] || {}).cells || {};
+  const byGroup = {};
+  let parcels = 0, acres = 0, land_val = 0;
+  GROUPS.forEach((g) => {
+    let p = 0, a = 0, v = 0;
+    BANDS.forEach((b) => {
+      if (!activeBands.has(b.id)) return;
+      const c = (cells[g.name] || {})[b.id];
+      if (!c) return;
+      p += c.parcels || 0; a += c.acres || 0; v += c.land_val || 0;
+    });
+    byGroup[g.name] = { parcels: p, acres: a, land_val: v };
+    parcels += p; acres += a; land_val += v;
+  });
+  return { parcels, acres, land_val, byGroup };
+}
+
+function bandParcelCount(year, bandId) {
+  const cells = (STATS[year] || {}).cells || {};
+  return GROUPS.reduce((n, g) => n + (((cells[g.name] || {})[bandId] || {}).parcels || 0), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Popup
+
 function popupHTML(p, lngLat) {
   const owner = LABEL[p.OWNERSHIP_GROUP] || p.OWNERSHIP_GROUP || "Public owner";
-  const color = COLOR[p.OWNERSHIP_GROUP] || "#008097";
+  const color = COLOR[p.OWNERSHIP_GROUP] || ACCENT;
   const addr = (p.address && String(p.address).trim()) ? p.address : "";
   const loc = addr ? addr + (p.zip ? ", " + p.zip : "") : "Address not listed";
-  // Address links to Google Street View at the clicked point.
   const sv = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lngLat.lat},${lngLat.lng}`;
   const locHtml = addr ? `<a href="${sv}" target="_blank" rel="noopener">${loc}</a>` : loc;
-  // Account links to the DCAD account detail page.
   const acct = p.ACCOUNT_NUM
     ? `<a href="https://www.dallascad.org/AcctDetail.aspx?ID=${encodeURIComponent(p.ACCOUNT_NUM)}" target="_blank" rel="noopener">${p.ACCOUNT_NUM}</a>`
     : "—";
@@ -64,6 +125,7 @@ function popupHTML(p, lngLat) {
     <div class="pp-owner"><span class="pp-dot" style="background:${color}"></span>${owner}</div>
     <div class="pp-addr">${locHtml}</div>
     <dl class="pp-grid">
+      ${row("Lot size", acresTxt(p.acres) + " ac")}
       ${row("Land value", dollar(p.land_val))}
       ${row("Prev. market", dollar(p.prev_val))}
       ${row("SPTD", p.sptd || "—")}
@@ -72,15 +134,309 @@ function popupHTML(p, lngLat) {
   </div>`;
 }
 
-let STATS = {};
-let YEARS = [];
-let currentYear = null;
+// ---------------------------------------------------------------------------
+// Trend charts — one metric each, so never a second y-scale on one plot.
+
+const METRICS = [
+  { key: "parcels",  label: "Parcels",            fmt: fmt,       tick: fmt },
+  { key: "acres",    label: "Acres",              fmt: fmt,       tick: fmt },
+  { key: "land_val", label: "Assessed land value", fmt: billions, tick: (v) => "$" + (v / 1e9).toFixed(1) + "B" },
+];
+
+const W = 300, H = 96, PAD = { t: 10, r: 12, b: 18, l: 46 };
+
+function lineChart(metric, series) {
+  const vals = series.map((d) => d.value);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  // These measures move by a couple of percent; a zero baseline would flatten
+  // them into a straight line. Pad the observed range instead and keep both
+  // axis ticks visible so the reader can see the scale is not zero-based.
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.25;
+  lo -= pad; hi += pad;
+  const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
+  const x = (i) => PAD.l + (series.length === 1 ? iw / 2 : (i / (series.length - 1)) * iw);
+  const y = (v) => PAD.t + ih - ((v - lo) / (hi - lo)) * ih;
+
+  const path = series.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join("");
+  const first = series[0], last = series[series.length - 1];
+
+  // Hairline, solid gridlines at the two tick values; no area fill, because the
+  // baseline is not zero and a fill would imply magnitude from zero.
+  const ticks = [lo + pad, hi - pad];
+  const grid = ticks.map((t) =>
+    `<line class="grid" x1="${PAD.l}" y1="${y(t).toFixed(1)}" x2="${W - PAD.r}" y2="${y(t).toFixed(1)}"/>`
+  ).join("");
+  const tickText = ticks.map((t) =>
+    `<text class="tick" x="${PAD.l - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${metric.tick(t)}</text>`
+  ).join("");
+  // Emphasis marker tying the charts to the vintage picker: a hairline guide at
+  // the selected year, so "2026" in the control and the headline value below
+  // clearly refer to the same point on the line.
+  const selIdx = series.findIndex((d) => d.year === currentYear);
+  const guide = selIdx >= 0
+    ? `<line class="grid" x1="${x(selIdx).toFixed(1)}" y1="${PAD.t}" x2="${x(selIdx).toFixed(1)}" y2="${H - PAD.b}"/>`
+    : "";
+
+  const xText = series.map((d, i) =>
+    (i === 0 || i === series.length - 1)
+      ? `<text class="tick" x="${x(i).toFixed(1)}" y="${H - 4}" text-anchor="${i ? "end" : "start"}">${d.year}</text>`
+      : ""
+  ).join("");
+
+  // Markers: r=4 (>=8px), each with a 2px surface ring, plus a 24px transparent
+  // hit area so the point is reliably hoverable and focusable.
+  const dots = series.map((d, i) => `
+    <circle cx="${x(i).toFixed(1)}" cy="${y(d.value).toFixed(1)}" r="4" fill="${ACCENT}" stroke="${SURFACE}" stroke-width="2"/>
+    <circle class="pt-hit" cx="${x(i).toFixed(1)}" cy="${y(d.value).toFixed(1)}" r="12"
+            tabindex="0" role="img"
+            data-year="${d.year}" data-val="${metric.fmt(d.value)}" data-label="${metric.label}"
+            aria-label="${d.year}: ${metric.fmt(d.value)} ${metric.label}"></circle>`).join("");
+
+  // No endpoint label inside the plot: the card's headline value directly above
+  // already labels the last point, in larger type. Repeating it here would be a
+  // second number saying the same thing, and it would overflow the viewBox.
+
+  return {
+    svg: `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${metric.label}, ${first.year} to ${last.year}">
+      ${grid}${guide}${tickText}${xText}
+      <path d="${path}" fill="none" stroke="${ACCENT}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>`,
+    first, last,
+  };
+}
+
+function renderTrend() {
+  const grid = document.getElementById("trend-grid");
+  grid.innerHTML = "";
+  const byYear = Object.fromEntries(YEARS.map((y) => [y, totalsFor(y)]));
+
+  METRICS.forEach((m) => {
+    const series = YEARS.map((y) => ({ year: y, value: byYear[y][m.key] }));
+    const { svg, first } = lineChart(m, series);
+    const sel = series.find((d) => d.year === currentYear) || series[series.length - 1];
+    const diff = sel.value - first.value;
+    const pct = first.value ? (diff / first.value) * 100 : 0;
+    // Neutral ink, not red/green: a fall in vacant public land could mean lots
+    // were put to use or that public land was sold off, and the page should not
+    // assert which. The sign carries the direction; status colors stay reserved.
+    const sign = diff > 0 ? "+" : (diff < 0 ? "−" : "±");
+    const deltaHtml = (sel.year === first.year)
+      ? `<span class="neutral">First vintage</span>`
+      : `<span class="neutral">${sign}${m.fmt(Math.abs(diff))} (${sign}${Math.abs(pct).toFixed(1)}%)</span> since ${first.year}`;
+
+    const card = document.createElement("div");
+    card.className = "tcard";
+    card.innerHTML = `
+      <div class="tcard-label">${m.label} · ${sel.year}</div>
+      <div class="tcard-value">${m.fmt(sel.value)}</div>
+      <div class="tcard-delta">${deltaHtml}</div>
+      ${svg}`;
+    grid.appendChild(card);
+  });
+
+  renderTrendTable(byYear);
+  wireChartTooltips();
+}
+
+function renderTrendTable(byYear) {
+  const t = document.getElementById("trend-table");
+  t.innerHTML = "";
+  const head = t.insertRow();
+  ["Vintage", "Parcels", "Acres", "Assessed land value"].forEach((h) => {
+    const th = document.createElement("th"); th.scope = "col"; th.textContent = h; head.appendChild(th);
+  });
+  YEARS.forEach((y) => {
+    const r = t.insertRow();
+    const th = document.createElement("th"); th.scope = "row"; th.textContent = y; r.appendChild(th);
+    [fmt(byYear[y].parcels), fmt(byYear[y].acres), billions(byYear[y].land_val)].forEach((v) => {
+      r.insertCell().textContent = v;
+    });
+  });
+}
+
+// Tooltips enhance, never gate: every value here is also in the table view.
+let TT = null;
+function wireChartTooltips() {
+  if (!TT) { TT = document.createElement("div"); TT.className = "tt"; TT.hidden = true; document.body.appendChild(TT); }
+  const show = (el) => {
+    TT.innerHTML = "";
+    const v = document.createElement("div"); v.className = "tt-v"; v.textContent = el.dataset.val;
+    const k = document.createElement("div"); k.className = "tt-k";
+    k.textContent = `${el.dataset.label} · ${el.dataset.year}`;
+    TT.append(v, k);
+    const r = el.getBoundingClientRect();
+    TT.hidden = false;
+    TT.style.left = Math.min(window.innerWidth - TT.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - TT.offsetWidth / 2)) + "px";
+    TT.style.top = Math.max(8, r.top - TT.offsetHeight - 8) + "px";
+  };
+  const hide = () => { if (TT) TT.hidden = true; };
+  document.querySelectorAll(".tcard .pt-hit").forEach((el) => {
+    el.addEventListener("pointerenter", () => show(el));
+    el.addEventListener("pointerleave", hide);
+    el.addEventListener("focus", () => show(el));
+    el.addEventListener("blur", hide);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Controls + cards
+
+function renderCards() {
+  const t = totalsFor(currentYear);
+  document.getElementById("total").textContent = fmt(t.parcels);
+  document.getElementById("vintage-label").textContent = currentYear;
+  document.getElementById("total-acres").textContent = fmt(t.acres);
+  document.getElementById("total-value").textContent = billions(t.land_val);
+  document.getElementById("counts").innerHTML = GROUPS.map((g) =>
+    `<div class="count-row"><b class="count-num" style="border-color:${g.color}">${fmt(t.byGroup[g.name].parcels)}</b>` +
+    ` listed as <span style="color:${g.color}">${g.label}</span></div>`
+  ).join("");
+}
+
+function applyFilter() {
+  if (!MAP) return;
+  YEARS.forEach((y) => GROUPS.forEach((g) => {
+    const base = y + "__" + slug(g.name);
+    if (MAP.getLayer(base)) MAP.setFilter(base, layerFilter(g.name));
+    if (MAP.getLayer(base + "__line")) MAP.setFilter(base + "__line", layerFilter(g.name));
+  }));
+}
+
+function refresh() {
+  applyFilter();
+  renderCards();
+  renderTrend();
+  updateSizeChips();
+  const note = document.getElementById("size-note");
+  const n = activeBands.size;
+  if (n === 0) {
+    note.textContent = "No size bands selected — the map is empty.";
+  } else if (n === BANDS.length) {
+    // State the concentration as measured, rather than asserting what the big
+    // parcels are: acreage is dominated by a small number of very large tracts,
+    // so parcel count and acreage tell different stories.
+    const big = BANDS[BANDS.length - 1];
+    const all = totalsFor(currentYear);
+    const cells = (STATS[currentYear] || {}).cells || {};
+    const bigAc = GROUPS.reduce((a, g) => a + (((cells[g.name] || {})[big.id] || {}).acres || 0), 0);
+    const bigN = bandParcelCount(currentYear, big.id);
+    const share = all.acres ? Math.round((bigAc / all.acres) * 100) : 0;
+    note.textContent = `Showing every lot size. The ${big.label} band is ${fmt(bigN)} parcels `
+      + `(${Math.round((bigN / all.parcels) * 100)}% of the count) but ${share}% of all acreage — `
+      + `filter it out to see the smaller, lot-scale inventory.`;
+  } else {
+    note.textContent = "Filtered by lot size. Counts, acreage and the trend below all follow this selection.";
+  }
+}
+
+function updateSizeChips() {
+  document.querySelectorAll(".size-option").forEach((el) => {
+    const on = activeBands.has(el.dataset.band);
+    el.dataset.on = on ? "1" : "0";
+    const n = el.querySelector(".size-n");
+    if (n) n.textContent = fmt(bandParcelCount(currentYear, el.dataset.band));
+  });
+}
+
+function buildSizePicker() {
+  const el = document.getElementById("size-picker");
+  el.innerHTML = "";
+  BANDS.forEach((b) => {
+    const label = document.createElement("label");
+    label.className = "size-option";
+    label.dataset.band = b.id;
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = activeBands.has(b.id);
+    input.addEventListener("change", () => {
+      if (input.checked) activeBands.add(b.id); else activeBands.delete(b.id);
+      refresh();
+    });
+    const txt = document.createElement("span");
+    txt.textContent = b.label;
+    const n = document.createElement("span");
+    n.className = "size-n";
+    label.append(input, txt, n);
+    el.appendChild(label);
+  });
+  document.getElementById("size-reset").addEventListener("click", () => {
+    activeBands = new Set(BANDS.map((b) => b.id));
+    document.querySelectorAll(".size-option input").forEach((i) => { i.checked = true; });
+    refresh();
+  });
+}
+
+function buildPicker() {
+  const el = document.getElementById("vintage-picker");
+  el.innerHTML = "";
+  YEARS.forEach((year) => {
+    const label = document.createElement("label");
+    label.className = "vintage-option";
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "vintage"; input.value = year;
+    input.checked = year === currentYear;
+    input.addEventListener("change", () => setVintage(year));
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(" " + year));
+    el.appendChild(label);
+  });
+}
+
+function setVintage(year) {
+  currentYear = year;
+  if (MAP) {
+    YEARS.forEach((y) => GROUPS.forEach((g) => {
+      const vis = y === year ? "visible" : "none";
+      const base = y + "__" + slug(g.name);
+      if (MAP.getLayer(base)) MAP.setLayoutProperty(base, "visibility", vis);
+      if (MAP.getLayer(base + "__line")) MAP.setLayoutProperty(base + "__line", "visibility", vis);
+    }));
+  }
+  refresh();
+}
+
+function buildLegend() {
+  document.getElementById("legend").innerHTML = GROUPS.map((g) =>
+    `<span class="legend-item"><span class="swatch" style="background:${g.color}"></span>${g.label}</span>`
+  ).join("");
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
-  STATS = await (await fetch("vintage_stats.json")).json();
+  const raw = await (await fetch("vintage_stats.json")).json();
+  STATS = raw.vintages;
+  BANDS = raw.bands;
   YEARS = Object.keys(STATS).sort();
   currentYear = YEARS[YEARS.length - 1];
+  activeBands = new Set(BANDS.map((b) => b.id));
 
+  // Render everything the stats file can drive BEFORE touching Mapbox. The map
+  // needs WebGL, which some machines and locked-down browsers do not provide;
+  // when it is missing only the map should degrade, not the counts, the filter
+  // and the trend charts, which are plain DOM and SVG.
+  buildPicker();
+  buildSizePicker();
+  buildLegend();
+  refresh();
+
+  try {
+    await initMap();
+  } catch (err) {
+    console.error("map init failed:", err);
+    const el = document.getElementById("map");
+    el.innerHTML = "";
+    const msg = document.createElement("div");
+    msg.className = "map-error";
+    msg.textContent = "The interactive map could not load in this browser (WebGL unavailable). "
+      + "The figures and trend below are unaffected.";
+    el.appendChild(msg);
+  }
+}
+
+async function initMap() {
   const boundaryGeo = await (await fetch("city-of-dallas-boundary.geojson")).json();
   const bb = bbox(boundaryGeo);
 
@@ -93,6 +449,7 @@ async function main() {
     maxZoom: 18,
     maxBounds: [[bb[0] - 0.18, bb[1] - 0.14], [bb[2] + 0.18, bb[3] + 0.14]],
   });
+  MAP = map;
   map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
   map.addControl(new mapboxgl.ScaleControl({ unit: "imperial" }), "bottom-left");
   map.on("error", (e) => console.error("map error:", e && e.error ? e.error : e));
@@ -101,7 +458,6 @@ async function main() {
   let hover = { id: null };
 
   map.on("load", () => {
-    // Spotlight: fade everything outside the City of Dallas, with a crisp edge.
     map.addSource("boundary", { type: "geojson", data: boundaryGeo });
     map.addSource("mask", { type: "geojson", data: maskGeo(boundaryGeo) });
     map.addLayer({
@@ -113,7 +469,6 @@ async function main() {
       paint: { "line-color": "#008097", "line-width": 1.2, "line-opacity": 0.5 },
     });
 
-    // One PMTiles vector source per vintage (native v3) + a fill layer per group.
     YEARS.forEach((year) => {
       const srcId = "src-" + year;
       const pmUrl = new URL("public-vacant-land_" + year + ".pmtiles", location.href).href;
@@ -128,15 +483,14 @@ async function main() {
             "fill-color": g.color,
             "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.9, 0.55],
           },
-          filter: ["==", ["get", "OWNERSHIP_GROUP"], g.name],
+          filter: layerFilter(g.name),
         });
-        // Thin outline for definition at high zoom.
         map.addLayer({
           id: layerId + "__line", type: "line", source: srcId, "source-layer": "parcels",
           layout: { visibility: year === currentYear ? "visible" : "none" },
           minzoom: 13,
           paint: { "line-color": g.color, "line-width": 0.6, "line-opacity": 0.9 },
-          filter: ["==", ["get", "OWNERSHIP_GROUP"], g.name],
+          filter: layerFilter(g.name),
         });
 
         map.on("mousemove", layerId, (e) => {
@@ -156,58 +510,21 @@ async function main() {
         });
       });
     });
+
+    // Layer filters are set at creation, but the user may have changed the
+    // selection while the style was still loading.
+    applyFilter();
   });
-
-  buildPicker(map);
-  buildLegend();
-  renderCards(currentYear);
-}
-
-function setVintage(map, year) {
-  currentYear = year;
-  YEARS.forEach((y) => GROUPS.forEach((g) => {
-    const vis = y === year ? "visible" : "none";
-    const base = y + "__" + slug(g.name);
-    if (map.getLayer(base)) map.setLayoutProperty(base, "visibility", vis);
-    if (map.getLayer(base + "__line")) map.setLayoutProperty(base + "__line", "visibility", vis);
-  }));
-  renderCards(year);
-}
-
-function buildPicker(map) {
-  const el = document.getElementById("vintage-picker");
-  el.innerHTML = "";
-  YEARS.forEach((year) => {
-    const label = document.createElement("label");
-    label.className = "vintage-option";
-    const input = document.createElement("input");
-    input.type = "radio"; input.name = "vintage"; input.value = year;
-    input.checked = year === currentYear;
-    input.addEventListener("change", () => setVintage(map, year));
-    label.appendChild(input);
-    label.appendChild(document.createTextNode(" " + year));
-    el.appendChild(label);
-  });
-}
-
-function buildLegend() {
-  document.getElementById("legend").innerHTML = GROUPS.map((g) =>
-    `<span class="legend-item"><span class="swatch" style="background:${g.color}"></span>${g.label}</span>`
-  ).join("");
-}
-
-function renderCards(year) {
-  const s = STATS[year] || { total: 0, by_group: {} };
-  document.getElementById("total").textContent = fmt(s.total);
-  document.getElementById("vintage-label").textContent = year;
-  document.getElementById("counts").innerHTML = GROUPS.map((g) =>
-    `<div class="count-row"><b class="count-num" style="border-color:${g.color}">${fmt(s.by_group[g.name])}</b>` +
-    ` listed as <span style="color:${g.color}">${g.label}</span></div>`
-  ).join("");
 }
 
 main().catch((err) => {
   console.error(err);
-  document.getElementById("map").innerHTML =
-    "<div class='map-error'>Map failed to load — see console. " + err + "</div>";
+  const el = document.getElementById("map");
+  if (el) {
+    el.innerHTML = "";
+    const msg = document.createElement("div");
+    msg.className = "map-error";
+    msg.textContent = "Could not load vintage_stats.json — see console.";
+    el.appendChild(msg);
+  }
 });

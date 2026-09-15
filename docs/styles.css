@@ -95,3 +95,66 @@ footer a { color: var(--teal-700); }
   .hero-right { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; }
   #map { height: 460px; }
 }
+
+/* ---- hero measures ------------------------------------------------------ */
+.hero-measures { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 0.9rem; color: #9bc0c6; }
+.hero-measures b { color: #fff; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---- filter controls ---------------------------------------------------- */
+.control-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.control-group--grow { flex: 1 1 auto; }
+.size-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.size-option {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--paper); font-size: 0.82rem; color: #45514f; user-select: none;
+}
+.size-option:hover { border-color: var(--teal-700); }
+.size-option input { margin: 0; accent-color: var(--teal-700); }
+.size-option[data-on="1"] { border-color: var(--teal-700); background: #eaf4f6; color: var(--teal-900); font-weight: 600; }
+.size-option .size-n { font-variant-numeric: tabular-nums; color: #6a7573; font-weight: 400; }
+.size-option[data-on="1"] .size-n { color: var(--teal-700); }
+.size-reset {
+  border: 1px solid var(--line); background: var(--paper); border-radius: 999px;
+  padding: 5px 12px; font: inherit; font-size: 0.8rem; color: #45514f; cursor: pointer;
+}
+.size-reset:hover { border-color: var(--teal-700); color: var(--teal-900); }
+.size-note { margin: 0 0 12px; font-size: 0.82rem; color: #6a7573; min-height: 1.2em; }
+
+/* ---- trend -------------------------------------------------------------- */
+.trend { margin-top: 26px; }
+.trend h2 { margin: 0 0 4px; font-size: 1.05rem; color: var(--teal-900); }
+.trend-sub { margin: 0 0 16px; font-size: 0.85rem; color: #6a7573; }
+.trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.tcard { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.tcard-label { font-size: 0.8rem; color: #6a7573; letter-spacing: .01em; }
+.tcard-value { font-size: 1.75rem; font-weight: 700; color: var(--teal-900); font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
+.tcard-delta { font-size: 0.8rem; color: #45514f; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tcard-delta .neutral { color: var(--ink); font-weight: 600; }
+.tcard svg { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
+.tcard .grid { stroke: var(--line); stroke-width: 1; }
+.tcard .tick { fill: #6a7573; font-size: 10px; font-variant-numeric: tabular-nums; }
+.tcard .pt-hit { fill: transparent; cursor: pointer; }
+.tcard .pt-hit:focus { outline: 2px solid var(--teal-700); outline-offset: 2px; border-radius: 50%; }
+
+.tt {
+  position: fixed; z-index: 40; pointer-events: none; background: var(--teal-900); color: #fff;
+  padding: 6px 9px; border-radius: 6px; font-size: 0.78rem; line-height: 1.35;
+  box-shadow: 0 4px 14px rgba(0,0,0,.22); white-space: nowrap;
+}
+.tt .tt-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tt .tt-k { color: #9bc0c6; }
+
+.trend-table { margin-top: 14px; }
+.trend-table summary { cursor: pointer; font-size: 0.85rem; color: var(--teal-700); }
+.trend-table-wrap { overflow-x: auto; }
+.trend-table table { border-collapse: collapse; margin-top: 10px; font-size: 0.83rem; min-width: 420px; }
+.trend-table th, .trend-table td { border-bottom: 1px solid var(--line); padding: 6px 12px 6px 0; text-align: right; }
+.trend-table th:first-child, .trend-table td:first-child { text-align: left; }
+.trend-table th { color: #45514f; font-weight: 600; }
+.trend-table td { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .controls { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .tcard-value { font-size: 1.45rem; }
+}

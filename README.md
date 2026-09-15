@@ -33,6 +33,29 @@ original Dropbox `.gdb`/CSV inputs.
 Water and city parks are **not** currently erased — see the mask note under
 "Refresh a vintage".
 
+## Reading the map
+
+**Lot size matters more than parcel count here.** Lot size spans four orders of
+magnitude, and acreage is dominated by a handful of very large tracts: in 2026 the
+10+ acre band is 341 parcels (8% of the count) but 77% of all acreage, largely
+river corridor and levee land. A single headline acreage figure is therefore
+misleading on its own, and the page never shows one without the size filter beside
+it. Filter the large band out to see the lot-scale inventory — 4,398 parcels /
+18,677 acres becomes 4,057 parcels / 4,266 acres.
+
+The lot-size filter drives everything: the map layers, the ownership-group counts,
+the headline figures and the trend charts all follow the current selection.
+
+Counts are precomputed per (ownership group x size band) in
+`docs/vintage_stats.json` rather than counted in the browser. Vector tiles are
+clipped and simplified per viewport, so counting rendered features would undercount
+at low zoom and drift as the user pans; the page sums the precomputed cells instead.
+
+**Trend charts** plot one measure each — parcels, acres, assessed land value —
+never two scales on one plot. Their y-axes are not zero-based (parcels and acres
+move by only a couple of percent, which a zero baseline would flatten into a
+straight line), so both axis ticks are always drawn and no area fill is used.
+
 ## How it's built
 
 A **static snapshot per appraisal vintage**, not a live service. Parcels don't

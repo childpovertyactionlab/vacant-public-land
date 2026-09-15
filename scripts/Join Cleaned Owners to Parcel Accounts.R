@@ -326,8 +326,14 @@ if (apply_mask && file.exists(mask_path)) {
 
 # ---- 5. Trim to the map's fields + write (web CRS 4326 for tiling) -----------
 # The browser builds and styles the popup from these fields (no baked HTML).
-# Keep the exact schema prep_2023.R emits so both vintages tile + render alike.
+#
+# `acres` is computed here, while the layer is still in the planar CRS (2276,
+# US survey feet) — area measured on 4326 degrees would be meaningless. Parcel
+# count alone is a poor summary of this inventory: lot size spans four orders of
+# magnitude, and the front end uses `acres` to let people cut the map to lots of
+# a usable size.
 invtParcels <- invtParcels |>
+  mutate(acres = round(as.numeric(st_area(geometry)) / 43560, 3)) |>
   transmute(
     GIS_PARCEL_ID,
     OWNERSHIP_GROUP,
@@ -337,7 +343,8 @@ invtParcels <- invtParcels |>
     zip      = substr(as.character(PROPERTY_ZIPCODE), 1, 5),
     sptd     = SPTD_CODE,
     land_val = as.numeric(LAND_VAL),
-    prev_val = as.numeric(PREV_MKT_VAL)
+    prev_val = as.numeric(PREV_MKT_VAL),
+    acres
   )
 
 # Spatial ops ran in EPSG:2276 (planar); web tiles need EPSG:4326.
